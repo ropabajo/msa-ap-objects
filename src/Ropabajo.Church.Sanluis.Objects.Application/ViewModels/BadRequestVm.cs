@@ -23,7 +23,7 @@ namespace Ropabajo.Church.Sanluis.Objects.Application.ViewModels
         /// <summary>
         /// Ruta consultada
         /// </summary>
-        /// <example>v1/payroll-concepts</example>
+        /// <example>v1/sanluis-persons</example>
         public string Path { get; set; }
 
         /// <summary>

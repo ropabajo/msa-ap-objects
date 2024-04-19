@@ -14,7 +14,7 @@ namespace Ropabajo.Church.Sanluis.Objects.Api.Controllers
     /// Gestión de objetos MinIO
     /// </summary>
     [ApiController]
-    [Route("v1/payroll-objects")]
+    [Route("v1/sanluis-objects")]
     public class ObjectController : ApiController
     {
         private readonly IMediatorBus _mediator;
@@ -90,7 +90,7 @@ namespace Ropabajo.Church.Sanluis.Objects.Api.Controllers
         /// <response code="404">No encontrado</response>
         /// <response code="422">Entidad no procesable</response> 
         /// <response code="500">Error interno del servidor</response>
-        [HttpPatch("{payrollObjectCode}/state/uploaded", Name = "UploadObjectAsync")]
+        [HttpPatch("{objectCode}/state/uploaded", Name = "UploadObjectAsync")]
         [Consumes(MediaTypeNames.Application.Json)]
         [Produces(MediaTypeNames.Application.Json)]
         [ProducesResponseType(typeof(BadRequestVm), StatusCodes.Status400BadRequest)]

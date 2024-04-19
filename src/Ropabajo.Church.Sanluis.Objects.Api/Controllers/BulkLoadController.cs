@@ -12,7 +12,7 @@ namespace Ropabajo.Church.Sanluis.Objects.Api.Controllers
     /// Gestión de formatos de carga masiva
     /// </summary>
     [ApiController]
-    [Route("v1/payroll-objects")]
+    [Route("v1/sanluis-objects")]
     public class BulkLoadController : ApiController
     {
         private readonly IMediatorBus _mediator;

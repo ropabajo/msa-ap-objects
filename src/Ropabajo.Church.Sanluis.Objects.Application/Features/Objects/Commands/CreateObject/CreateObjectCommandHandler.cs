@@ -95,7 +95,7 @@ namespace Ropabajo.Church.Sanluis.Objects.Application.Features.Objects.Commands.
 
             var presignedPost = await _minioClient.PresignedPostPolicyAsync(args);
             await _bus.RaiseAsync(new Header("url", presignedPost.Item1.AbsoluteUri));
-            await _bus.RaiseAsync(new Header("payroll-object-code", code.ToString()));
+            await _bus.RaiseAsync(new Header("sanluis-object-code", code.ToString()));
             foreach (var item in presignedPost.Item2)
             {
                 await _bus.RaiseAsync(new Header($"x-form-data-{item.Key}", item.Value));
