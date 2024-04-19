@@ -1,8 +1,5 @@
 ﻿using AutoMapper;
-using Ropabajo.Church.Sanluis.Objects.Application.Features.Departments.Queries.GetDepartments;
-using Ropabajo.Church.Sanluis.Objects.Application.Features.Districts.Queries.GetDistricts;
-using Ropabajo.Church.Sanluis.Objects.Application.Features.Provinces.Queries.GetProvinces;
-using Ropabajo.Church.Sanluis.Objects.Domain;
+using Ropabajo.Church.Sanluis.Objects.Application.Features.Departments.Queries.GetObjects;
 
 namespace Ropabajo.Church.Sanluis.Objects.Application.Mappings
 {
@@ -10,13 +7,7 @@ namespace Ropabajo.Church.Sanluis.Objects.Application.Mappings
     {
         public MappingProfile()
         {
-            CreateMap<Departament, DepartmentsVm>()
-             .ReverseMap();
-
-            CreateMap<Province, ProvincesVm>()
-             .ReverseMap();
-
-            CreateMap<District, DistrictsVm>()
+            CreateMap<Object, ObjectsVm>()
              .ReverseMap();
         }
     }

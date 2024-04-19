@@ -22,9 +22,7 @@ namespace Ropabajo.Church.Sanluis.Objects.Infraestructure
                  new MySqlServerVersion(new Version(8, 0, 21))));
 
             services.AddScoped(typeof(IBaseRepository<>), typeof(RepositoryBase<>));
-            services.AddScoped<IDepartmentRepository, DepartmentRepository>();
-            services.AddScoped<IProvinceRepository, ProvinceRepository>();
-            services.AddScoped<IDistrictRepository, DistrictRepository>();
+            services.AddScoped<IObjectRepository, ObjectRepository>();
 
             return services;
         }
