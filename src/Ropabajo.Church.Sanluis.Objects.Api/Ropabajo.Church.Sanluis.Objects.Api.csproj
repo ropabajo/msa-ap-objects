@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="7.0.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+	<PackageReference Include="Elastic.Apm.NetCoreAll" Version="1.25.1" />
+    <PackageReference Include="Ropabajo.Churc.Sanluis.Framework.Core" Version="1.0.1" />
+    <PackageReference Include="Ropabajo.Churc.Sanluis.Framework.MinIo" Version="1.0.0" />
+    <PackageReference Include="Ropabajo.Churc.Sanluis.Framework.Swagger" Version="1.0.0" />
+	<PackageReference Include="Steeltoe.Extensions.Configuration.ConfigServerCore" Version="3.2.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ropabajo.Church.Sanluis.Objects.Application\Ropabajo.Church.Sanluis.Objects.Application.csproj" />
+    <ProjectReference Include="..\Ropabajo.Church.Sanluis.Objects.Infraestructure\Ropabajo.Church.Sanluis.Objects.Infraestructure.csproj" />
+  </ItemGroup>
+
+</Project>

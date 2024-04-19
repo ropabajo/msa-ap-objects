@@ -1,0 +1,8 @@
+version: '3.8'
+services:
+  be:
+    build:
+      context: .
+    ports:
+      - 5000:80
+  
