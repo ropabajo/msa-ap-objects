@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Ropabajo.Churc.Sanluis.Framework.Mediator;
 using Ropabajo.Church.Sanluis.Objects.Application.Features.Departments.Queries.GetObjects;
 using Ropabajo.Church.Sanluis.Objects.Application.Features.Objects.Commands.CreateObject;
+using Ropabajo.Church.Sanluis.Objects.Application.Features.Objects.Commands.UploadObject;
 using Ropabajo.Church.Sanluis.Objects.Application.ViewModels;
 using System.Net.Mime;
 
@@ -71,6 +72,33 @@ namespace Ropabajo.Church.Sanluis.Objects.Api.Controllers
         [ProducesResponseType(typeof(UnprocessableVm), StatusCodes.Status422UnprocessableEntity)]
         public async Task<ActionResult> CreateObjectAsync([FromBody] CreateObjectCommand command)
         {
+            await _mediator.SendAsync(command);
+
+            return Response();
+        }
+
+        /// <summary>
+        /// Actualizar el estado de un objeto a subido
+        /// </summary>
+        /// <remarks>
+        /// Actualiza el estado un objeto de planilla de prefirmado a subido
+        /// </remarks>
+        /// <param name="objectCode" example="4352279a-d37b-4f80-8bd8-42e018d7a98a">Código único de objeto que necesita ser actualizado</param>
+        /// <response code="200">Solicitud exitosa</response>
+        /// <response code="400">Solicitud incorrecta</response>
+        /// <response code="401">No autorizado</response>
+        /// <response code="404">No encontrado</response>
+        /// <response code="422">Entidad no procesable</response> 
+        /// <response code="500">Error interno del servidor</response>
+        [HttpPatch("{payrollObjectCode}/state/uploaded", Name = "UploadObjectAsync")]
+        [Consumes(MediaTypeNames.Application.Json)]
+        [Produces(MediaTypeNames.Application.Json)]
+        [ProducesResponseType(typeof(BadRequestVm), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(UnprocessableVm), StatusCodes.Status422UnprocessableEntity)]
+        public async Task<ActionResult> UploadObjectAsync([FromRoute] Guid objectCode)
+        {
+            var command = new UploadObjectCommand(objectCode);
+
             await _mediator.SendAsync(command);
 
             return Response();

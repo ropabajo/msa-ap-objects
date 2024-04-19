@@ -15,6 +15,7 @@ namespace Ropabajo.Church.Sanluis.Objects.Application.Contracts.Persistence
                                        Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
                                        List<Expression<Func<T, object>>>? includes = null,
                                        bool disableTracking = true);
+        Task<T> GetOneAsync(Expression<Func<T, bool>> predicate);
         Task<T> GetByIdAsync(int id);
         Task<T> AddAsync(T entity);
         T Add(T entity);

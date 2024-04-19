@@ -1,12 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Ropabajo.Churc.Sanluis.Framework.Mediator;
 
 namespace Ropabajo.Church.Sanluis.Objects.Application.Features.Objects.Commands.UploadObject
 {
-    internal class UploadObjectCommand
+    public class UploadObjectCommand : Command
     {
+        public UploadObjectCommand(Guid objectCode)
+        {
+            ObjectCode = objectCode;
+        }
+
+        public Guid? ObjectCode { get; set; }
     }
 }

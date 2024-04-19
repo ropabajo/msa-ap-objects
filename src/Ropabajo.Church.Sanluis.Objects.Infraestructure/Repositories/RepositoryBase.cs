@@ -53,6 +53,11 @@ namespace Ropabajo.Church.Sanluis.Objects.Infraestructure.Repositories
             return await query.ToListAsync();
         }
 
+        public async Task<T> GetOneAsync(Expression<Func<T, bool>> predicate)
+        {
+            return await _dbContext.Set<T>().SingleOrDefaultAsync(predicate);
+        }
+
         public virtual async Task<T> GetByIdAsync(int id)
         {
             return await _dbContext.Set<T>().FindAsync(id);

@@ -1,12 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using FluentValidation;
 
 namespace Ropabajo.Church.Sanluis.Objects.Application.Features.Objects.Commands.UploadObject
 {
-    internal class UploadObjectCommandValidator
+    public class UploadObjectCommandValidator : AbstractValidator<UploadObjectCommand>
     {
+        public UploadObjectCommandValidator()
+        {
+            RuleFor(p => p.ObjectCode)
+                 .NotEmpty().WithMessage("{PropertyName} is required.").WithErrorCode("400.0101");
+        }
     }
 }
