@@ -4,11 +4,11 @@ namespace Ropabajo.Church.Sanluis.Objects.Application.Features.Objects.Commands.
 {
     public class UploadObjectCommand : Command
     {
-        public UploadObjectCommand(Guid objectCode)
+        public UploadObjectCommand(string objectCode)
         {
             ObjectCode = objectCode;
         }
 
-        public Guid? ObjectCode { get; set; }
+        public string? ObjectCode { get; set; }
     }
 }

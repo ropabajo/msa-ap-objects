@@ -95,7 +95,7 @@ namespace Ropabajo.Church.Sanluis.Objects.Api.Controllers
         [Produces(MediaTypeNames.Application.Json)]
         [ProducesResponseType(typeof(BadRequestVm), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(UnprocessableVm), StatusCodes.Status422UnprocessableEntity)]
-        public async Task<ActionResult> UploadObjectAsync([FromRoute] Guid objectCode)
+        public async Task<ActionResult> UploadObjectAsync([FromRoute] string objectCode)
         {
             var command = new UploadObjectCommand(objectCode);
 

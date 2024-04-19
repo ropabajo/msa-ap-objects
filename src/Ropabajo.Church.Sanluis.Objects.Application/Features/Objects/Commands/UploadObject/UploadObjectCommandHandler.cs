@@ -41,7 +41,7 @@ namespace Ropabajo.Church.Sanluis.Objects.Application.Features.Objects.Commands.
             }
 
             // Get object
-            var objectToUpdate = await _objectRepository.GetOneAsync(x => x.Code == command.ObjectCode && !x.Delete);
+            var objectToUpdate = await _objectRepository.GetOneAsync(x => x.Code == Guid.Parse(command.ObjectCode) && !x.Delete);
             if (objectToUpdate is null)
             {
                 await _bus.RaiseAsync(new Notification(NotificationType.NotFound));
