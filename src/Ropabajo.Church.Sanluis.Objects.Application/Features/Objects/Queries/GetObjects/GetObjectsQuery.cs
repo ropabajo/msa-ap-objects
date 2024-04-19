@@ -7,7 +7,7 @@ namespace Ropabajo.Church.Sanluis.Objects.Application.Features.Departments.Queri
         /// <summary>
         /// Código objeto
         /// </summary>
-        /// <example>2</example>
+        /// <example>4352279a-d37b-4f80-8bd8-42e018d7a98a</example>
         public Guid? Code { get; set; }
 
         /// <summary>
