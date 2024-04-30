@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Ropabajo.Churc.Sanluis.Framework.Mediator;
 using Ropabajo.Church.Sanluis.Objects.Application.Features.BulkLoads.Commands.CreateBulkLoad;
+using Ropabajo.Church.Sanluis.Objects.Application.Features.BulkLoads.Queries.GetPagedBulkLoads;
+using Ropabajo.Church.Sanluis.Objects.Application.Features.BulkLoads.Queries.GetTotalBulkLoads;
 using Ropabajo.Church.Sanluis.Objects.Application.ViewModels;
 using System.Net.Mime;
 
@@ -49,6 +51,49 @@ namespace Ropabajo.Church.Sanluis.Objects.Api.Controllers
             await _mediator.SendAsync(command);
 
             return Response();
+        }
+
+        /// <summary>
+        /// Obtener una página de formatos de carga masiva
+        /// </summary>
+        /// <remarks>
+        /// Obtiene una página de formatos de carga masiva
+        /// </remarks>
+        /// <response code="200">Solicitud exitosa</response>
+        /// <response code="204">Sin contenido</response>
+        /// <response code="400">Solicitud incorrecta</response>
+        /// <response code="401">No autorizado</response>
+        /// <response code="500">Error interno del servidor</response>      
+        [HttpGet("bulk-loads", Name = "GetPagedBulkLoadsAsync")]
+        [Produces(MediaTypeNames.Application.Json)]
+        [ProducesResponseType(typeof(IEnumerable<PagedBulkLoadsVm>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<IEnumerable<PagedBulkLoadsVm>>> GetPagedBulkLoadsAsync([FromQuery] GetPagedBulkLoadsQuery query)
+        {
+            var periods = await _mediator.SendAsync(query);
+
+            return Response(periods);
+        }
+
+        /// <summary>
+        /// Contar los formatos de carga masiva
+        /// </summary>
+        /// <remarks>
+        /// Ontiene el número total de formatos de carga masiva
+        /// </remarks>
+        /// <response code="200">Solicitud exitosa</response>
+        /// <response code="400">Solicitud incorrecta</response>
+        /// <response code="401">No autorizado</response>
+        /// <response code="500">Error interno del servidor</response>          
+        [HttpGet("bulk-loads/total", Name = "GetTotalBulkLoadsAsync")]
+        [Produces(MediaTypeNames.Application.Json)]
+        [ProducesResponseType(typeof(TotalBulkLoadsVm), StatusCodes.Status200OK)]
+        public async Task<ActionResult<TotalBulkLoadsVm>> GetTotalBulkLoadsAsync()
+        {
+            var query = new GetTotalBulkLoadsQuery();
+
+            var total = await _mediator.SendAsync(query);
+
+            return Response(total);
         }
     }
 }
