@@ -18,5 +18,5 @@ builder.WebHost.UseBase();
 var app = builder.Build();
 app.UseBase();
 app.UseBaseSwagger();
-app.UseAllElasticApm(app.Configuration);
+//app.UseAllElasticApm(app.Configuration);
 app.Run();
