@@ -51,25 +51,23 @@ namespace Ropabajo.Church.Sanluis.Objects.Application.Features.Objects.Commands.
                 return Unit.Value;
             }
 
-            // Get extension
             string extension = Path.GetExtension(command.FileName);
 
-            // Validate extension
-            var isValidExtension = command.AllowedExtensions.Split(",").Any(x => x.Trim() == extension);
-            if (!isValidExtension)
+            if (!command.AllowedExtensions.Split(",").Any(x => x.Trim() == extension))
             {
                 await _bus.RaiseAsync(new Notification("422.0001", "La extensión del fichero no es soportado por el formato de carga masiva."));
                 return Unit.Value;
             }
 
-            Guid code = Guid.NewGuid();
-            string objectName = $"{command.Path}/{code}{extension}";
             var provider = new FileExtensionContentTypeProvider();
             if (!provider.TryGetContentType(Path.GetExtension(command.FileName), out string contentType))
             {
                 await _bus.RaiseAsync(new Notification("422.0002", "El tipo de MIME no ha podido ser determinado."));
                 return Unit.Value;
             }
+
+            Guid code = Guid.NewGuid();
+            string objectName = $"{command.Path}/{code}{extension}";
 
             var maxContentRange = command.MaxLength.Value * 1024 * 1024;
             var expires = DateTime.UtcNow + new TimeSpan(0, 0, command.Expiration.Value);
@@ -88,20 +86,39 @@ namespace Ropabajo.Church.Sanluis.Objects.Application.Features.Objects.Commands.
             policy.SetKey(objectName);
             policy.SetBucket(_minIoOptions.BucketName);
 
+            //policy.SetPolicy("eq", "$x-amz-algorithm", "AWS4-HMAC-SHA256");
+            //policy.SetPolicy("eq", "$x-amz-credential", $"{_minIoOptions.AccessKey}/{DateTime.UtcNow.ToString("yyyyMMdd")}/us-east-1/s3/aws4_request");
+            //policy.SetPolicy("eq", "$x-amz-date", DateTime.UtcNow.ToString("yyyyMMddTHHmmssZ"));
+
+
+            //policy.SetCondition("x-amz-credential", $"{_minIoOptions.AccessKey}/{DateTime.UtcNow.ToString("yyyyMMdd")}/us-east-1/s3/aws4_request");
+            //policy.SetCondition("x-amz-date", DateTime.UtcNow.ToString("yyyyMMddTHHmmssZ"));
+
             PresignedPostPolicyArgs args = new PresignedPostPolicyArgs()
                                        .WithBucket(_minIoOptions.BucketName)
                                        .WithObject(objectName)
                                        .WithPolicy(policy);
 
             var presignedPost = await _minioClient.PresignedPostPolicyAsync(args);
-            await _bus.RaiseAsync(new Header("url", presignedPost.Item1.AbsoluteUri));
-            await _bus.RaiseAsync(new Header("sanluis-object-code", code.ToString()));
+
+            var headers = new Dictionary<string, string>
+            {
+                { "url", presignedPost.Item1.AbsoluteUri },
+                { "sanluis-object-code", code.ToString() },
+                { "x-form-data-content-type", contentType },
+                { "x-form-data-cache-control", cacheControl }
+            };
+
             foreach (var item in presignedPost.Item2)
             {
-                await _bus.RaiseAsync(new Header($"x-form-data-{item.Key}", item.Value));
+                headers[$"x-form-data-{item.Key}"] = item.Value;
             }
-            await _bus.RaiseAsync(new Header("x-form-data-content-type", contentType));
-            await _bus.RaiseAsync(new Header("x-form-data-cache-control", cacheControl));
+
+            foreach (var header in headers)
+            {
+                await _bus.RaiseAsync(new Header(header.Key, header.Value));
+            }
+
 
             var state = Shared.Enums.ObjectState.PresignedUrl;
             var date = DateTime.Now;
