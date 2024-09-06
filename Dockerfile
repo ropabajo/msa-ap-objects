@@ -1,25 +1,22 @@
-#See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
-
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
-USER app
-WORKDIR /app
-EXPOSE 8080
-EXPOSE 8081
-
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-ARG BUILD_CONFIGURATION=Release
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS base
 WORKDIR /src
-COPY ["Ropabajo.Church.Sanluis.Objects.Api/Ropabajo.Church.Sanluis.Objects.Api.csproj", "Ropabajo.Church.Sanluis.Objects.Api/"]
-RUN dotnet restore "./Ropabajo.Church.Sanluis.Objects.Api/./Ropabajo.Church.Sanluis.Objects.Api.csproj"
+
+ARG GITHUB_USERNAME
+ARG GITHUB_TOKEN
+
+RUN dotnet nuget add source https://nuget.pkg.github.com/robertpablo/index.json -n GitHub -u ${GITHUB_USERNAME} -p ${GITHUB_TOKEN} --store-password-in-clear-text
+
 COPY . .
-WORKDIR "/src/Ropabajo.Church.Sanluis.Objects.Api"
-RUN dotnet build "./Ropabajo.Church.Sanluis.Objects.Api.csproj" -c $BUILD_CONFIGURATION -o /app/build
+RUN dotnet restore "src/Ropabajo.Church.Sanluis.Objects.Api/Ropabajo.Church.Sanluis.Objects.Api.csproj"
 
 FROM build AS publish
-ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./Ropabajo.Church.Sanluis.Objects.Api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "src/Ropabajo.Church.Sanluis.Objects.Api/Ropabajo.Church.Sanluis.Objects.Api.csproj" -c Release -o /app/publish
 
-FROM base AS final
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+
 WORKDIR /app
 COPY --from=publish /app/publish .
+
+RUN update-ca-certificates
+ENV ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
 ENTRYPOINT ["dotnet", "Ropabajo.Church.Sanluis.Objects.Api.dll"]
