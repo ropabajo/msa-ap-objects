@@ -24,6 +24,6 @@ namespace Ropabajo.Church.Sanluis.Objects.Domain.Common
         public string? LastModifiedIp { get; set; }
 
         [Column("ELIMINADO")]
-        public bool Delete { get; set; } = true;
+        public bool Delete { get; set; } = false;
     }
 }
