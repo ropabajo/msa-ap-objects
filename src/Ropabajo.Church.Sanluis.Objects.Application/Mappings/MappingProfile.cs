@@ -12,6 +12,7 @@ namespace Ropabajo.Church.Sanluis.Objects.Application.Mappings
         public MappingProfile()
         {
             CreateMap<Object, ObjectsVm>()
+             .ForMember(dest => dest.ObjectCode, act => act.MapFrom(src => src.Code))
              .ReverseMap();
 
             CreateMap<Format, FormatsVm>()

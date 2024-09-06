@@ -6,7 +6,7 @@
         /// Código objeto
         /// </summary>
         /// <example>2</example>
-        public Guid Code { get; set; }
+        public Guid ObjectCode { get; set; }
 
         /// <summary>
         /// Nombre objeto

@@ -35,14 +35,14 @@ namespace Ropabajo.Church.Sanluis.Objects.Application.Features.Departments.Queri
                 return null;
             }
 
-            var departaments = await _objectRepository.GetByCodeAsync(query.Code, query.ObjectName);
-            if (!departaments.Any())
+            var objects = await _objectRepository.GetByCodeAsync(query.Code, query.ObjectName);
+            if (!objects.Any())
             {
                 await _bus.RaiseAsync(new Notification(NotificationType.NotContent));
                 return null;
             }
 
-            return _mapper.Map<IEnumerable<ObjectsVm>>(departaments);
+            return _mapper.Map<IEnumerable<ObjectsVm>>(objects);
         }
     }
 }

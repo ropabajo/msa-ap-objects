@@ -46,11 +46,11 @@ namespace Ropabajo.Church.Sanluis.Objects.Api.Controllers
         [Produces(MediaTypeNames.Application.Json)]
         [ProducesResponseType(typeof(BadRequestVm), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(UnprocessableVm), StatusCodes.Status422UnprocessableEntity)]
-        public async Task<ActionResult> GetObjectsAsync([FromQuery] GetObjectsQuery command)
+        public async Task<ActionResult> GetObjectsAsync([FromQuery] GetObjectsQuery query)
         {
-            await _mediator.SendAsync(command);
+            var objects = await _mediator.SendAsync(query);
 
-            return Response();
+            return Response(objects);
         }
 
         /// <summary>
