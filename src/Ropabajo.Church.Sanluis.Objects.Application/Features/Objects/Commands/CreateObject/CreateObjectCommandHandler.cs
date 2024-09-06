@@ -86,13 +86,13 @@ namespace Ropabajo.Church.Sanluis.Objects.Application.Features.Objects.Commands.
             policy.SetKey(objectName);
             policy.SetBucket(_minIoOptions.BucketName);
 
-            //policy.SetPolicy("eq", "$x-amz-algorithm", "AWS4-HMAC-SHA256");
-            //policy.SetPolicy("eq", "$x-amz-credential", $"{_minIoOptions.AccessKey}/{DateTime.UtcNow.ToString("yyyyMMdd")}/us-east-1/s3/aws4_request");
-            //policy.SetPolicy("eq", "$x-amz-date", DateTime.UtcNow.ToString("yyyyMMddTHHmmssZ"));
+            var currentDate = DateTime.UtcNow;
+            var formattedDate = currentDate.ToString("yyyyMMdd");
+            var formattedDateTime = currentDate.ToString("yyyyMMddTHHmmssZ");
 
-
-            //policy.SetCondition("x-amz-credential", $"{_minIoOptions.AccessKey}/{DateTime.UtcNow.ToString("yyyyMMdd")}/us-east-1/s3/aws4_request");
-            //policy.SetCondition("x-amz-date", DateTime.UtcNow.ToString("yyyyMMddTHHmmssZ"));
+            policy.SetAlgorithm("AWS4-HMAC-SHA256");
+            policy.SetCredential($"{_minIoOptions.AccessKey}/{formattedDate}/us-east-1/s3/aws4_request");
+            policy.SetDate(currentDate);
 
             PresignedPostPolicyArgs args = new PresignedPostPolicyArgs()
                                        .WithBucket(_minIoOptions.BucketName)
