@@ -28,7 +28,7 @@ namespace Ropabajo.Church.Sanluis.Objects.Api.Controllers
 
 
         /// <summary>
-        /// Listar los formatos
+        /// Listar los formatoss
         /// </summary>
         /// <remarks>
         /// Obtiene los formatos soportados por el sistema
