@@ -2,9 +2,11 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Ropabajo.Churc.Sanluis.Framework.Mediator;
+using Ropabajo.Church.Sanluis.Objects.Application.Features.BulkLoads.Queries.GetTotalBulkLoads;
 using Ropabajo.Church.Sanluis.Objects.Application.Features.Departments.Queries.GetObjects;
 using Ropabajo.Church.Sanluis.Objects.Application.Features.Objects.Commands.CreateObject;
 using Ropabajo.Church.Sanluis.Objects.Application.Features.Objects.Commands.UploadObject;
+using Ropabajo.Church.Sanluis.Objects.Application.Features.Objects.Queries.GetObjectPresignedUrl;
 using Ropabajo.Church.Sanluis.Objects.Application.ViewModels;
 using System.Net.Mime;
 
@@ -46,6 +48,7 @@ namespace Ropabajo.Church.Sanluis.Objects.Api.Controllers
         [Produces(MediaTypeNames.Application.Json)]
         [ProducesResponseType(typeof(BadRequestVm), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(UnprocessableVm), StatusCodes.Status422UnprocessableEntity)]
+        [ProducesResponseType(typeof(IEnumerable<ObjectsVm>), StatusCodes.Status200OK)]
         public async Task<ActionResult> GetObjectsAsync([FromQuery] GetObjectsQuery query)
         {
             var objects = await _mediator.SendAsync(query);
@@ -103,5 +106,30 @@ namespace Ropabajo.Church.Sanluis.Objects.Api.Controllers
 
             return Response();
         }
+
+        /// <summary>
+        /// Obtener la presigned url
+        /// </summary>
+        /// <remarks>
+        /// Poder realizar la descarga del archivo
+        /// </remarks>
+        /// <response code="200">Solicitud exitosa</response>
+        /// <response code="400">Solicitud incorrecta</response>
+        /// <response code="401">No autorizado</response>
+        /// <response code="404">No encontrado</response>
+        /// <response code="422">Entidad no procesable</response> 
+        /// <response code="500">Error interno del servidor</response>
+        [HttpGet("get-presigned-url")]
+        [Consumes(MediaTypeNames.Application.Json)]
+        [Produces(MediaTypeNames.Application.Json)]
+        [ProducesResponseType(typeof(BadRequestVm), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(UnprocessableVm), StatusCodes.Status422UnprocessableEntity)]
+        [ProducesResponseType(typeof(GetObjectPresignedUrlVm), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetPresignedUrl([FromQuery] GetObjectPresignedUrlQuery query)
+        {
+            var result = await _mediator.SendAsync(query);
+            return Ok(result);
+        }
+
     }
 }
