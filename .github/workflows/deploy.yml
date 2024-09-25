@@ -34,24 +34,7 @@ jobs:
         docker push ropbajo/msa-ap-objects:latest
         docker push ropbajo/msa-ap-objects:v${{ github.run_number }}
 
-    - name: Checkout k8s-recipes repository
-      uses: actions/checkout@v2
-      with:
-        repository: ropabajo/k8s-recipes
-        path: k8s-recipes
-        token: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Update deployment.yaml with new image version
-      run: |
-        sed -i 's|ropbajo/msa-ap-objects:v[0-9\.]*|ropbajo/msa-ap-objects:v${{ github.run_number }}|' k8s-recipes/ap-objects/base/deployment.yaml
-        cd k8s-recipes
-        git config --global user.email "robertbarrera@outlook.com"
-        git config --global user.name "Robert Barrera"
-        git add ap-objects/base/deployment.yaml
-        git commit -m "Update image version to v${{ github.run_number }}"
-        git push
-
-    - name: SSH to the server and deploy
+    - name: SSH to the server, update repository, and deploy
       uses: appleboy/ssh-action@v0.1.4
       with:
         host: ${{ secrets.SERVER_IP }}
@@ -59,5 +42,10 @@ jobs:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: 22
         script: |
-          cd /path/to/k8s-recipes
-          kubectl apply -f ap-objects/base/deployment.yaml
+          cd /srv/repositorios/k8s-recipes  # Navegar al directorio de recetas en el servidor
+          git pull origin main  # Actualizar el repositorio con los últimos cambios
+          sed -i 's|ropbajo/msa-ap-objects:v[0-9\.]*|ropbajo/msa-ap-objects:v${{ github.run_number }}|' ap-objects/base/deployment.yaml  # Actualizar el archivo deployment.yaml
+          git add ap-objects/base/deployment.yaml
+          git commit -m "Update image version to v${{ github.run_number }}"
+          git push  # Hacer push de los cambios al repositorio remoto
+          kubectl apply -f ap-objects/base/deployment.yaml  # Aplicar los cambios en Minikube
