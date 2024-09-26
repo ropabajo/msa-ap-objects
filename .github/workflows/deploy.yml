@@ -10,9 +10,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Create SSH key file
+      run: |
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > private_key.pem
+        chmod 600 private_key.pem  # Asegurar permisos correctos
+
     - name: Test SSH connection
       run: |
-        ssh -i ${{ secrets.SSH_PRIVATE_KEY }} \
-        -o StrictHostKeyChecking=no \
-        ropabajo@${{ secrets.SERVER_IP }} \
-        'echo "SSH connection successful"'
+        ssh -i private_key.pem -o StrictHostKeyChecking=no ropabajo@${{ secrets.SERVER_IP }} 'echo "SSH connection successful"'
+      
+    - name: Clean up
+      run: rm private_key.pem  # Eliminar el archivo de la clave privada
