@@ -51,19 +51,16 @@ jobs:
       run: |
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > /tmp/id_rsa
         chmod 600 /tmp/id_rsa
-        ssh -i /tmp/id_rsa -o StrictHostKeyChecking=no ropabajo@${{ secrets.SERVER_IP }} 'bash -s' << 'EOF'
-          # Cambiar la propiedad y permisos del repositorio
+        IMAGE_VERSION=ropbajo/msa-ap-objects:v${{ github.run_number }}  # Definir la variable antes de SSH
+        ssh -i /tmp/id_rsa -o StrictHostKeyChecking=no ropabajo@${{ secrets.SERVER_IP }} 'bash -s' << EOF
           sudo chown -R ropabajo:ropabajo /srv/repositorios/k8s-recipes
           sudo chmod -R 755 /srv/repositorios/k8s-recipes
-          
-          # Agregar el directorio como seguro para Git
           git config --global --add safe.directory /srv/repositorios/k8s-recipes
-          
           cd /srv/repositorios/k8s-recipes || exit 1
           
           # Configurar credenciales para Git
           git config --global user.name "ropabajo"
-          git config --global user.email "tu-email@example.com"
+          git config --global user.email "ropabajo@ropabajo"
           git config credential.helper store
           
           # Autenticar usando el token de GitHub
@@ -74,12 +71,12 @@ jobs:
           echo "Git pull completed successfully"
           
           # Actualizar el archivo deployment.yaml con la nueva versión de la imagen
-          sed -i 's|ropabajo/msa-ap-objects:v[0-9\.]*|ropabajo/msa-ap-objects:v${{ github.run_number }}|' ap-objects/base/deployment.yaml || exit 1
+          sed -i 's|ropbajo/msa-ap-objects:v[0-9\.]*|${IMAGE_VERSION}|' ap-objects/base/deployment.yaml || exit 1
           echo "Imagen actualizada en deployment.yaml"
           
           # Agregar y hacer commit de los cambios
           git add ap-objects/base/deployment.yaml || exit 1
-          git commit -m "Update image version to v${{ github.run_number }}" || exit 1
+          git commit -m "Update image version to ${IMAGE_VERSION}" || exit 1
           
           # Realizar push de los cambios al repositorio
           git push || exit 1
