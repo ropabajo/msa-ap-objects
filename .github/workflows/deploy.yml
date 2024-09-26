@@ -1,4 +1,4 @@
-name: Build, Deploy, and Apply API
+name: Test SSH Connection
 
 on:
   push:
@@ -6,46 +6,13 @@ on:
       - main
 
 jobs:
-  build:
+  test-ssh:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-
-    - name: Set up .NET Core
-      uses: actions/setup-dotnet@v1
-      with:
-        dotnet-version: '8.0.x'
-
-    - name: Build the Docker image
+    - name: Test SSH connection
       run: |
-        docker build \
-        --build-arg GITHUB_USERNAME=${{ secrets.USERNAME }} \
-        --build-arg GITHUB_TOKEN=${{ secrets.TOKEN }} \
-        -t ropbajo/msa-ap-objects:latest \
-        -t ropbajo/msa-ap-objects:v${{ github.run_number }} .
-
-    - name: Log in to DockerHub
-      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-
-    - name: Push Docker image
-      run: |
-        docker push ropbajo/msa-ap-objects:latest
-        docker push ropbajo/msa-ap-objects:v${{ github.run_number }}
-
-    - name: SSH to the server, update repository, and deploy
-      uses: appleboy/ssh-action@v0.1.4
-      with:
-        host: ${{ secrets.SERVER_IP }}
-        username: ${{ secrets.SERVER_USERNAME }}  # El usuario que usas para Minikube (ropabajo)
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        port: 22
-        script: |
-          cd /srv/repositorios/k8s-recipes  # Navegar al directorio de recetas en el servidor
-          git pull origin main  # Actualizar el repositorio con los últimos cambios
-          sed -i 's|ropbajo/msa-ap-objects:v[0-9\.]*|ropbajo/msa-ap-objects:v${{ github.run_number }}|' ap-objects/base/deployment.yaml  # Actualizar el archivo deployment.yaml
-          git add ap-objects/base/deployment.yaml
-          git commit -m "Update image version to v${{ github.run_number }}"
-          git push  # Hacer push de los cambios al repositorio remoto
-          kubectl apply -f ap-objects/base/deployment.yaml  # Aplicar los cambios en Minikube
+        ssh -i ${{ secrets.SSH_PRIVATE_KEY }} \
+        -o StrictHostKeyChecking=no \
+        ropabajo@${{ secrets.SERVER_IP }} \
+        'echo "SSH connection successful"'
