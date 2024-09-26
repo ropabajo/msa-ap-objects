@@ -15,8 +15,20 @@ jobs:
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > /tmp/id_rsa
         chmod 600 /tmp/id_rsa
         ssh -i /tmp/id_rsa -o StrictHostKeyChecking=no ropabajo@${{ secrets.SERVER_IP }} 'bash -s' << 'EOF'
+          sudo chown -R ropabajo:ropabajo /srv/repositorios/k8s-recipes
+          sudo chmod -R 755 /srv/repositorios/k8s-recipes
           git config --global --add safe.directory /srv/repositorios/k8s-recipes  # Agregar el directorio como seguro
           cd /srv/repositorios/k8s-recipes || exit 1
+          
+          # Configurar credenciales para Git
+          git config --global user.name "ropabajo"
+          git config --global user.email "tu-email@example.com"
+          git config credential.helper store
+          
+          # Autenticar usando el token de GitHub
+          git remote set-url origin https://ropabajo:${{ secrets.TOKEN }}@github.com/ropabajo/k8s-recipes.git
+          
+          # Ejecutar git pull
           git pull origin main || exit 1
           echo "Git pull completed successfully"
         EOF
