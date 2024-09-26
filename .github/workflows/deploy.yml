@@ -1,9 +1,21 @@
-- name: SSH to server and pull repository
-  run: |
-    echo "${{ secrets.SSH_PRIVATE_KEY }}" > /tmp/id_rsa
-    chmod 600 /tmp/id_rsa
-    ssh -i /tmp/id_rsa -o StrictHostKeyChecking=no ropabajo@${{ secrets.SERVER_IP }} 'bash -s' << 'EOF'
-      cd /srv/repositorios/k8s-recipes || exit 1
-      git pull origin main || exit 1
-      echo "Git pull completed successfully"
-    EOF
+name: Test SSH Connection
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test-ssh:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: SSH to server and pull repository
+      run: |
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > /tmp/id_rsa
+        chmod 600 /tmp/id_rsa
+        ssh -i /tmp/id_rsa -o StrictHostKeyChecking=no ropabajo@${{ secrets.SERVER_IP }} 'bash -s' << 'EOF'
+          cd /srv/repositorios/k8s-recipes || exit 1
+          git pull origin main || exit 1
+          echo "Git pull completed successfully"
+        EOF
