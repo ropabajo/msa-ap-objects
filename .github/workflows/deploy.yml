@@ -1,4 +1,4 @@
-name: Test SSH Connection
+name: Build, Test SSH, Deploy, and Apply API
 
 on:
   push:
@@ -6,18 +6,59 @@ on:
       - main
 
 jobs:
-  test-ssh:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-    - name: SSH to server and pull repository
+    # Checkout the repository
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    # Set up .NET Core
+    - name: Set up .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: '8.0.x'
+
+    # Build the Docker image
+    - name: Build the Docker image
+      run: |
+        docker build \
+        --build-arg GITHUB_USERNAME=${{ secrets.USERNAME }} \
+        --build-arg GITHUB_TOKEN=${{ secrets.TOKEN }} \
+        -t ropbajo/msa-ap-objects:latest \
+        -t ropbajo/msa-ap-objects:v${{ github.run_number }} .
+
+    # Log in to DockerHub
+    - name: Log in to DockerHub
+      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+    # Push Docker image
+    - name: Push Docker image
+      run: |
+        docker push ropbajo/msa-ap-objects:latest
+        docker push ropbajo/msa-ap-objects:v${{ github.run_number }}
+
+    # Test SSH connection to server
+    - name: Test SSH connection
+      run: |
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > /tmp/id_rsa
+        chmod 600 /tmp/id_rsa
+        ssh -i /tmp/id_rsa -o StrictHostKeyChecking=no ropabajo@${{ secrets.SERVER_IP }} 'echo "SSH connection successful"'
+
+    # SSH to the server, update repository, and deploy
+    - name: SSH to the server, update repository, and deploy
       run: |
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > /tmp/id_rsa
         chmod 600 /tmp/id_rsa
         ssh -i /tmp/id_rsa -o StrictHostKeyChecking=no ropabajo@${{ secrets.SERVER_IP }} 'bash -s' << 'EOF'
+          # Cambiar la propiedad y permisos del repositorio
           sudo chown -R ropabajo:ropabajo /srv/repositorios/k8s-recipes
           sudo chmod -R 755 /srv/repositorios/k8s-recipes
-          git config --global --add safe.directory /srv/repositorios/k8s-recipes  # Agregar el directorio como seguro
+          
+          # Agregar el directorio como seguro para Git
+          git config --global --add safe.directory /srv/repositorios/k8s-recipes
+          
           cd /srv/repositorios/k8s-recipes || exit 1
           
           # Configurar credenciales para Git
@@ -31,4 +72,20 @@ jobs:
           # Ejecutar git pull
           git pull origin main || exit 1
           echo "Git pull completed successfully"
+          
+          # Actualizar el archivo deployment.yaml con la nueva versión de la imagen
+          sed -i 's|ropabajo/msa-ap-objects:v[0-9\.]*|ropabajo/msa-ap-objects:v${{ github.run_number }}|' ap-objects/base/deployment.yaml || exit 1
+          echo "Imagen actualizada en deployment.yaml"
+          
+          # Agregar y hacer commit de los cambios
+          git add ap-objects/base/deployment.yaml || exit 1
+          git commit -m "Update image version to v${{ github.run_number }}" || exit 1
+          
+          # Realizar push de los cambios al repositorio
+          git push || exit 1
+          echo "Cambios enviados al repositorio remoto"
+
+          # Aplicar los cambios en Minikube
+          kubectl apply -f ap-objects/base/deployment.yaml || exit 1
+          echo "Despliegue completado con éxito"
         EOF
