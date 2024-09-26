@@ -1,4 +1,4 @@
-name: Test SSH Connection
+name: Build, Test SSH, Deploy, and Apply API
 
 on:
   push:
@@ -6,18 +6,59 @@ on:
       - main
 
 jobs:
-  test-ssh:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Create SSH key file
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Build the Docker image
       run: |
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > private_key.pem
-        chmod 600 private_key.pem  # Asegurar permisos correctos
+        docker build \
+        --build-arg GITHUB_USERNAME=${{ secrets.USERNAME }} \
+        --build-arg GITHUB_TOKEN=${{ secrets.TOKEN }} \
+        -t ropbajo/msa-ap-objects:latest \
+        -t ropbajo/msa-ap-objects:v${{ github.run_number }} .
+
+    - name: Log in to DockerHub
+      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+    - name: Push Docker image
+      run: |
+        docker push ropbajo/msa-ap-objects:latest
+        docker push ropbajo/msa-ap-objects:v${{ github.run_number }}
 
     - name: Test SSH connection
       run: |
-        ssh -i private_key.pem -o StrictHostKeyChecking=no ropabajo@${{ secrets.SERVER_IP }} 'echo "SSH connection successful"'
-      
-    - name: Clean up
-      run: rm private_key.pem  # Eliminar el archivo de la clave privada
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > /tmp/id_rsa
+        chmod 600 /tmp/id_rsa
+        ssh -i /tmp/id_rsa -o StrictHostKeyChecking=no ropabajo@${{ secrets.SERVER_IP }} 'echo "SSH connection successful"'
+
+    - name: SSH to the server, update repository, and deploy
+      uses: appleboy/ssh-action@v0.1.4
+      with:
+        host: ${{ secrets.SERVER_IP }}
+        username: ${{ secrets.SERVER_USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: 22
+        script: |
+          echo "Iniciando la conexión SSH al servidor"
+          cd /srv/repositorios/k8s-recipes || exit 1  # Navegar al directorio de recetas en el servidor
+          echo "Directorio de recetas encontrado. Realizando git pull..."
+          git pull origin main || exit 1  # Actualizar el repositorio con los últimos cambios
+          echo "Actualizando el deployment.yaml"
+          sed -i 's|ropbajo/msa-ap-objects:v[0-9\.]*|ropbajo/msa-ap-objects:v${{ github.run_number }}|' ap-objects/base/deployment.yaml || exit 1  # Actualizar el archivo deployment.yaml
+          echo "Agregando cambios a git"
+          git add ap-objects/base/deployment.yaml || exit 1
+          git commit -m "Update image version to v${{ github.run_number }}" || exit 1
+          echo "Realizando push al repositorio"
+          git push || exit 1  # Hacer push de los cambios al repositorio remoto
+          echo "Aplicando los cambios en Minikube"
+          kubectl apply -f ap-objects/base/deployment.yaml || exit 1  # Aplicar los cambios en Minikube
+          echo "Despliegue completado con éxito"
