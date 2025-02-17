@@ -130,6 +130,5 @@ namespace Ropabajo.Church.Sanluis.Objects.Api.Controllers
             var result = await _mediator.SendAsync(query);
             return Ok(result);
         }
-
     }
 }

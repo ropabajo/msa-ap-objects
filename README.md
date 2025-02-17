@@ -23,5 +23,5 @@ docker push ropbajo/msa-ap-objects:v1.0
 ## cambien el nombre de la cadena de conexión despues de generar la imagen v1.0 -- revisar al desplegar en el minikube
 
 
-
-
+## para acceder a la virtual
+ssh root@161.132.54.155
