@@ -3,7 +3,6 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using Ropabajo.Churc.Sanluis.Framework.Mediator;
 using Ropabajo.Church.Sanluis.Objects.Application.Contracts.Persistence;
-using Ropabajo.Church.Sanluis.Objects.Application.Events.BulkLoads.BulkLoadCreated;
 using Ropabajo.Church.Sanluis.Objects.Domain.Entities;
 
 namespace Ropabajo.Church.Sanluis.Objects.Application.Features.BulkLoads.Commands.CreateBulkLoad
@@ -116,10 +115,6 @@ namespace Ropabajo.Church.Sanluis.Objects.Application.Features.BulkLoads.Command
             };
             await _bulkLoadStateRepository.AddAsync(bulkLoadStateToCreate);
             _logger.LogInformation($"Bulk load state {bulkLoadStateToCreate.Id} is successfully created.");
-
-            // Raise event
-            await _bus.RaiseAsync(new BulkLoadCreatedEvent(bulkLoadToCreate));
-            _logger.LogInformation($"Bulk load created event {bulkLoadToCreate.Code} is successfully raised.");
 
             return Unit.Value;
         }
