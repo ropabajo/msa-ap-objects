@@ -1,6 +1,7 @@
 ﻿using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Ropabajo.Churc.Sanluis.Framework.Mediator;
+using Ropabajo.Churc.Sanluis.Framework.RabbitMq;
 using System.Reflection;
 
 namespace Ropabajo.Church.Sanluis.Objects.Application
@@ -12,6 +13,7 @@ namespace Ropabajo.Church.Sanluis.Objects.Application
             services.AddAutoMapper(Assembly.GetExecutingAssembly());
             services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
             services.AddMediator(Assembly.GetExecutingAssembly());
+            services.AddRabbitMq(Assembly.GetExecutingAssembly());
 
             return services;
         }
