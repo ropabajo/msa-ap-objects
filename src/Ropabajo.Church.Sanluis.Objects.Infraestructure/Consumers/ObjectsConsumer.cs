@@ -1,4 +1,5 @@
-﻿using MediatR;
+﻿/*
+using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -50,3 +51,4 @@ namespace Ropabajo.Church.Sanluis.Objects.Infraestructure.Consumers
         }
     }
 }
+*/
