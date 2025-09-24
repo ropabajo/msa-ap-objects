@@ -28,7 +28,7 @@ namespace Ropabajo.Church.Sanluis.Objects.Infraestructure.Repositories
                             User = bl.User,
                         };
             return await query
-                .OrderBy(x => x.Id)
+                .OrderByDescending(x => x.Id)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
