@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Ropabajo.Church.Sanluis.Objects.Application.Features.BulkLoadResults.Queries.GetPagedBulkLoadResults;
 using Ropabajo.Church.Sanluis.Objects.Application.Features.BulkLoads.Queries.GetPagedBulkLoads;
+using Ropabajo.Church.Sanluis.Objects.Application.Features.BulkLoadStates.Queries.GetBulkLoadStates;
 using Ropabajo.Church.Sanluis.Objects.Application.Features.Departments.Queries.GetObjects;
 using Ropabajo.Church.Sanluis.Objects.Application.Features.Formats.Queries.GetFormats;
 using Ropabajo.Church.Sanluis.Objects.Domain.Entities;
@@ -28,6 +29,9 @@ namespace Ropabajo.Church.Sanluis.Objects.Application.Mappings
 
             CreateMap<BulkLoadResult, PagedBulkLoadResultsVm>()
               .ForMember(dest => dest.BulkLoadResultCode, act => act.MapFrom(src => src.Code))
+              .ReverseMap();
+
+            CreateMap<BulkLoadState, BulkLoadStatesVm>()
               .ReverseMap();
         }
     }
