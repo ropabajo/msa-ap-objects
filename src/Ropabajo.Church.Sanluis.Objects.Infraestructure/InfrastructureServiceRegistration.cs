@@ -30,7 +30,9 @@ namespace Ropabajo.Church.Sanluis.Objects.Infraestructure
             services.AddScoped<IObjectStateRepository, ObjectStateRepository>();
             services.AddScoped<IBulkLoadRepository, BulkLoadRepository>();
             services.AddScoped<IBulkLoadStateRepository, BulkLoadStateRepository>();
+            services.AddScoped<IBulkLoadResultRepository, BulkLoadResultRepository>();
             services.AddScoped<IFormatRepository, FormatRepository>();
+
             return services;
         }
     }

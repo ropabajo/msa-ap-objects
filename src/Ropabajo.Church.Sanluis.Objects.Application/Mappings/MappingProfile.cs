@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Ropabajo.Church.Sanluis.Objects.Application.Features.BulkLoadResults.Queries.GetPagedBulkLoadResults;
 using Ropabajo.Church.Sanluis.Objects.Application.Features.BulkLoads.Queries.GetPagedBulkLoads;
 using Ropabajo.Church.Sanluis.Objects.Application.Features.Departments.Queries.GetObjects;
 using Ropabajo.Church.Sanluis.Objects.Application.Features.Formats.Queries.GetFormats;
@@ -23,6 +24,10 @@ namespace Ropabajo.Church.Sanluis.Objects.Application.Mappings
               .ForMember(dest => dest.BulkLoadCode, act => act.MapFrom(src => src.Code))
               .ForMember(dest => dest.PayrollObjectCode, act => act.MapFrom(src => src.ObjectCode))
               .ForMember(dest => dest.RecordDate, act => act.MapFrom(src => src.CreatedDate))
+              .ReverseMap();
+
+            CreateMap<BulkLoadResult, PagedBulkLoadResultsVm>()
+              .ForMember(dest => dest.BulkLoadResultCode, act => act.MapFrom(src => src.Code))
               .ReverseMap();
         }
     }

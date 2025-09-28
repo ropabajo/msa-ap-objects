@@ -5,14 +5,26 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace Ropabajo.Church.Sanluis.Objects.Domain.Entities
 {
     [Table("carga_masiva_resultado")]
-    public  class BulkLoadResult : BaseEntity
+    public class BulkLoadResult : BaseEntity
     {
         [Key]
         [Column("ID_CARGA_MASIVA_RESULTADO")]
         public int Id { get; set; }
 
+        [Column("CODIGO_CARGA_MASIVA_RESULTADO")]
+        public Guid Code { get; set; }
+
         [Column("ID_CARGA_MASIVA")]
         public int BulkLoadId { get; set; }
+
+        [Column("CODIGO_CARGA_MASIVA")]
+        public Guid BulkLoadCode { get; set; }
+
+        [Column("ID_FORMATO")]
+        public int FormatId { get; set; }
+
+        [Column("CODIGO_FORMATO")]
+        public Guid FormatCode { get; set; }
 
         [Column("NUMERO_FILA")]
         public int RowNumber { get; set; }
