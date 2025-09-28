@@ -5,10 +5,11 @@ namespace Ropabajo.Church.Sanluis.Objects.Application.Contracts.Persistence
     public interface IBulkLoadRepository : IBaseRepository<BulkLoad>
     {
         Task<IEnumerable<BulkLoad>> GetPagedAsync(
+            Guid? formatCode,
             int pageNumber,
             int pageSize
             );
 
-        Task<int> GetTotalAsync();
+        Task<int> GetTotalAsync(Guid? formatCode);
     }
 }

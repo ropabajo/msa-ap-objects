@@ -22,6 +22,7 @@ namespace Ropabajo.Church.Sanluis.Objects.Application.Mappings
             CreateMap<BulkLoad, PagedBulkLoadsVm>()
               .ForMember(dest => dest.BulkLoadCode, act => act.MapFrom(src => src.Code))
               .ForMember(dest => dest.PayrollObjectCode, act => act.MapFrom(src => src.ObjectCode))
+              .ForMember(dest => dest.RecordDate, act => act.MapFrom(src => src.CreatedDate))
               .ReverseMap();
         }
     }

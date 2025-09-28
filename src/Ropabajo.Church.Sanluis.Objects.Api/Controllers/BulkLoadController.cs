@@ -46,7 +46,7 @@ namespace Ropabajo.Church.Sanluis.Objects.Api.Controllers
         [Produces(MediaTypeNames.Application.Json)]
         [ProducesResponseType(typeof(BadRequestVm), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(UnprocessableVm), StatusCodes.Status422UnprocessableEntity)]
-        public async Task<ActionResult> CreateBulkLoadAsync([FromBody] CreateBulkLoadCommand command)
+        public async Task<ActionResult> CreateBulkLoadAsync([FromBody] CreateBulkLoadCommand command, CancellationToken cancellation = default)
         {
             await _mediator.SendAsync(command);
 
@@ -67,7 +67,7 @@ namespace Ropabajo.Church.Sanluis.Objects.Api.Controllers
         [HttpGet("bulk-loads", Name = "GetPagedBulkLoadsAsync")]
         [Produces(MediaTypeNames.Application.Json)]
         [ProducesResponseType(typeof(IEnumerable<PagedBulkLoadsVm>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<IEnumerable<PagedBulkLoadsVm>>> GetPagedBulkLoadsAsync([FromQuery] GetPagedBulkLoadsQuery query)
+        public async Task<ActionResult<IEnumerable<PagedBulkLoadsVm>>> GetPagedBulkLoadsAsync([FromQuery] GetPagedBulkLoadsQuery query, CancellationToken cancellation = default)
         {
             var periods = await _mediator.SendAsync(query);
 
@@ -80,6 +80,7 @@ namespace Ropabajo.Church.Sanluis.Objects.Api.Controllers
         /// <remarks>
         /// Ontiene el número total de formatos de carga masiva
         /// </remarks>
+        /// <param name="formatCode" example="82d1d1db-0727-421e-a0fe-78750146f433">Código único de formato de carga masiva</param>
         /// <response code="200">Solicitud exitosa</response>
         /// <response code="400">Solicitud incorrecta</response>
         /// <response code="401">No autorizado</response>
@@ -87,9 +88,9 @@ namespace Ropabajo.Church.Sanluis.Objects.Api.Controllers
         [HttpGet("bulk-loads/total", Name = "GetTotalBulkLoadsAsync")]
         [Produces(MediaTypeNames.Application.Json)]
         [ProducesResponseType(typeof(TotalBulkLoadsVm), StatusCodes.Status200OK)]
-        public async Task<ActionResult<TotalBulkLoadsVm>> GetTotalBulkLoadsAsync()
+        public async Task<ActionResult<TotalBulkLoadsVm>> GetTotalBulkLoadsAsync(Guid? formatCode, CancellationToken cancellation = default)
         {
-            var query = new GetTotalBulkLoadsQuery();
+            var query = new GetTotalBulkLoadsQuery { FormatCode = formatCode };
 
             var total = await _mediator.SendAsync(query);
 

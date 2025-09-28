@@ -37,9 +37,11 @@ namespace Ropabajo.Church.Sanluis.Objects.Application.Features.BulkLoads.Queries
             }
 
             var bulkLoads = await _bulkLoadRepository.GetPagedAsync(
+                query.FormatCode,
                 query.PageNumber.Value,
                 query.PageSize.Value
                 );
+
             if (!bulkLoads.Any())
             {
                 await _bus.RaiseAsync(new Notification(NotificationType.NotContent));

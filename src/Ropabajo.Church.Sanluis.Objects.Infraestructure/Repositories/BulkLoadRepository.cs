@@ -8,15 +8,18 @@ namespace Ropabajo.Church.Sanluis.Objects.Infraestructure.Repositories
     public class BulkLoadRepository : RepositoryBase<BulkLoad>, IBulkLoadRepository
     {
         public BulkLoadRepository(DatabaseContext dbContext) : base(dbContext)
-        {        }
+        { }
 
         public async Task<IEnumerable<BulkLoad>> GetPagedAsync(
+            Guid? formatCode,
             int pageNumber,
             int pageSize
             )
         {
             var query = from bl in _dbContext.BulkLoads
-                        where !bl.Delete
+                        where
+                            (!formatCode.HasValue || bl.FormatCode == formatCode.Value)
+                            && !bl.Delete
                         select new BulkLoad()
                         {
                             Id = bl.Id,
@@ -26,19 +29,27 @@ namespace Ropabajo.Church.Sanluis.Objects.Infraestructure.Repositories
                             StateCode = bl.StateCode,
                             Date = bl.Date,
                             User = bl.User,
+                            Records = bl.Records,
+                            UploadedRecords = bl.UploadedRecords,
+                            ObservedRecords = bl.ObservedRecords,
+                            CreatedDate = bl.CreatedDate,
                         };
+
             return await query
-                .OrderByDescending(x => x.Id)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
+            .OrderByDescending(x => x.Id)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
         }
 
-        public async Task<int> GetTotalAsync()
+        public async Task<int> GetTotalAsync(Guid? formatCode)
         {
             var query = from bl in _dbContext.BulkLoads
-                        where !bl.Delete
+                        where
+                            (!formatCode.HasValue || bl.FormatCode == formatCode.Value)
+                            && !bl.Delete
                         select bl;
+
             return await query.CountAsync();
         }
     }

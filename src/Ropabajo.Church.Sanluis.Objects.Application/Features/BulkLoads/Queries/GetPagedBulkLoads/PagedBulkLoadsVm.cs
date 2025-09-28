@@ -41,7 +41,31 @@
         /// <summary>
         /// Fecha de cambio de estado
         /// </summary>
-        /// <example>2022-01-01</example>
+        /// <example>2025-09-28T14:50:31</example>
         public DateTime Date { get; set; }
+
+        /// <summary>
+        /// Cantidad de registros en la carga masiva
+        /// </summary>
+        /// <example>100</example>
+        public int? Records { get; set; }
+
+        /// <summary>
+        /// Cantidad de registros cargados correctamente
+        /// </summary>
+        /// <example>80</example>
+        public int? UploadedRecords { get; set; }
+
+        /// <summary>
+        /// Cantidad de registros observados
+        /// </summary>
+        /// <example>20</example>
+        public int? ObservedRecords { get; set; }
+
+        /// <summary>
+        /// Fecha de cambio de estado
+        /// </summary>
+        /// <example>2025-09-28T14:49:51</example>
+        public DateTime RecordDate { get; set; }
     }
 }
