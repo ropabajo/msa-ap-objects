@@ -21,7 +21,8 @@ namespace Ropabajo.Church.Sanluis.Objects.Application.Features.BulkLoadResults.Q
 
         private bool BeAValidStateCode(string stateCode)
         {
-            return Enum.TryParse(typeof(BulkLoadResultState), stateCode, out var _);
+            return !string.IsNullOrWhiteSpace(stateCode)
+                    && BulkLoadResultState.ValidCodes.Contains(stateCode.Trim());
         }
     }
 }

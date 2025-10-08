@@ -20,7 +20,7 @@ namespace Ropabajo.Church.Sanluis.Objects.Infraestructure.Repositories
             var query = from bl in _dbContext.BulkLoadResults
                         where
                             (!bulkLoadCode.HasValue || bl.BulkLoadCode == bulkLoadCode.Value)
-                            && (string.IsNullOrEmpty(stateCode) || bl.StateCode.Equals(stateCode, StringComparison.OrdinalIgnoreCase))
+                            && (string.IsNullOrEmpty(stateCode) || bl.StateCode.Equals(stateCode))
                             && !bl.Delete
 
                         select bl;
@@ -40,7 +40,7 @@ namespace Ropabajo.Church.Sanluis.Objects.Infraestructure.Repositories
             var query = from bl in _dbContext.BulkLoadResults
                         where
                             (!bulkLoadCode.HasValue || bl.BulkLoadCode == bulkLoadCode.Value)
-                            && (string.IsNullOrEmpty(stateCode) || bl.StateCode.Equals(stateCode, StringComparison.OrdinalIgnoreCase))
+                            && (string.IsNullOrEmpty(stateCode) || bl.StateCode.Equals(stateCode))
                             && !bl.Delete
                         select bl;
 
