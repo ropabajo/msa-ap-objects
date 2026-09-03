@@ -7,9 +7,12 @@ namespace Ropabajo.Church.Sanluis.Objects.Application.Contracts.Persistence
         Task<IEnumerable<BulkLoad>> GetPagedAsync(
             Guid? formatCode,
             int pageNumber,
-            int pageSize
+            int pageSize,
+            CancellationToken cancellationToken = default
             );
 
-        Task<int> GetTotalAsync(Guid? formatCode);
+        Task<int> GetTotalAsync(
+            Guid? formatCode,
+            CancellationToken cancellationToken = default);
     }
 }

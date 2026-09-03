@@ -8,12 +8,14 @@ namespace Ropabajo.Church.Sanluis.Objects.Application.Contracts.Persistence
                    Guid? bulkLoadCode,
                    string? stateCode,
                    int pageNumber,
-                   int pageSize
+                   int pageSize,
+                    CancellationToken cancellationToken = default
                    );
 
         Task<int> GetTotalAsync(
             Guid? bulkLoadCode,
-            string? stateCode
+            string? stateCode,
+            CancellationToken cancellationToken = default
             );
     }
 }

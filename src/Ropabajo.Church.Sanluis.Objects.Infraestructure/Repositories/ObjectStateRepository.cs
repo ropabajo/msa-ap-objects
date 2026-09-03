@@ -2,12 +2,11 @@
 using Ropabajo.Church.Sanluis.Objects.Domain.Entities;
 using Ropabajo.Church.Sanluis.Objects.Infraestructure.Persistence;
 
-namespace Ropabajo.Church.Sanluis.Objects.Infraestructure.Repositories
+namespace Ropabajo.Church.Sanluis.Objects.Infraestructure.Repositories;
+
+public class ObjectStateRepository : RepositoryBase<ObjectState>, IObjectStateRepository
 {
-    public class ObjectStateRepository : RepositoryBase<ObjectState>, IObjectStateRepository
+    public ObjectStateRepository(DatabaseContext dbContext) : base(dbContext)
     {
-        public ObjectStateRepository(DatabaseContext dbContext) : base(dbContext)
-        {
-        }
     }
 }

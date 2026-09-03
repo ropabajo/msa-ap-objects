@@ -2,12 +2,11 @@
 using Ropabajo.Church.Sanluis.Objects.Domain.Entities;
 using Ropabajo.Church.Sanluis.Objects.Infraestructure.Persistence;
 
-namespace Ropabajo.Church.Sanluis.Objects.Infraestructure.Repositories
+namespace Ropabajo.Church.Sanluis.Objects.Infraestructure.Repositories;
+
+public class BulkLoadStateRepository : RepositoryBase<BulkLoadState>, IBulkLoadStateRepository
 {
-    public class BulkLoadStateRepository : RepositoryBase<BulkLoadState>, IBulkLoadStateRepository
+    public BulkLoadStateRepository(DatabaseContext dbContext) : base(dbContext)
     {
-        public BulkLoadStateRepository(DatabaseContext dbContext) : base(dbContext)
-        {
-        }
     }
 }

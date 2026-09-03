@@ -4,6 +4,6 @@ namespace Ropabajo.Church.Sanluis.Objects.Application.Contracts.Persistence
 {
     public interface IObjectRepository : IBaseRepository<Object>
     {
-        Task<IEnumerable<Object>> GetByCodeAsync(Guid? code, string? objectName);
+        Task<IEnumerable<Object>> GetByCodeAsync(Guid? code, string? objectName, CancellationToken cancellationToken = default);
     }
 }

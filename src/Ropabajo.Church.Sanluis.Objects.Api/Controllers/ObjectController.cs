@@ -1,134 +1,163 @@
 ﻿using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Ropabajo.Churc.Sanluis.Framework.Core.Responses;
 using Ropabajo.Churc.Sanluis.Framework.Mediator;
-using Ropabajo.Church.Sanluis.Objects.Application.Features.BulkLoads.Queries.GetTotalBulkLoads;
 using Ropabajo.Church.Sanluis.Objects.Application.Features.Departments.Queries.GetObjects;
 using Ropabajo.Church.Sanluis.Objects.Application.Features.Objects.Commands.CreateObject;
 using Ropabajo.Church.Sanluis.Objects.Application.Features.Objects.Commands.UploadObject;
 using Ropabajo.Church.Sanluis.Objects.Application.Features.Objects.Queries.GetObjectPresignedUrl;
-using Ropabajo.Church.Sanluis.Objects.Application.ViewModels;
 using System.Net.Mime;
 
-namespace Ropabajo.Church.Sanluis.Objects.Api.Controllers
+namespace Ropabajo.Church.Sanluis.Objects.Api.Controllers;
+
+/// <summary>
+/// Gestión de objetos MinIO
+/// </summary>
+[ApiController]
+[Route("v1/sanluis-objects")]
+[Authorize]
+public class ObjectController : ApiController
 {
+    private readonly IMediatorBus _mediator;
+
     /// <summary>
-    /// Gestión de objetos MinIO
+    /// Constructor del controlador de objetos
     /// </summary>
-    [ApiController]
-    [Route("v1/sanluis-objects")]
-    public class ObjectController : ApiController
+    /// <param name="mediator">Instancia de IMediatorBus para enviar comandos y consultas</param>
+    /// <param name="headers">Manejador de notificaciones de encabezados</param>
+    /// <param name="notifications">Manejador de notificaciones de errores</param>
+    public ObjectController(
+        IMediatorBus mediator,
+        INotificationHandler<Header> headers,
+        INotificationHandler<Notification> notifications
+    ) : base(headers, notifications)
     {
-        private readonly IMediatorBus _mediator;
+        _mediator = mediator;
+    }
 
-        public ObjectController(
-            IMediatorBus mediator,
-            INotificationHandler<Header> headers,
-            INotificationHandler<Notification> notifications,
-            IActionContextAccessor actionContextAccessor
-        ) : base(headers, notifications, actionContextAccessor)
-        {
-            _mediator = mediator;
-        }
+    /// <summary>
+    /// Obtener una lista de objetos
+    /// </summary>
+    /// <remarks>
+    /// Obtiene listado de objetos
+    /// </remarks>
+    /// <param name="request">Parámetros para crear un objeto</param>
+    /// <param name="cancellationToken">Código de cancelación para la operación asincrónica</param>
+    /// <response code="201">Solicitud exitosa</response>
+    /// <response code="400">Solicitud incorrecta</response>
+    /// <response code="401">No autorizado</response>
+    /// <response code="404">No encontrado</response>
+    /// <response code="422">Entidad no procesable</response> 
+    /// <response code="500">Error interno del servidor</response>      
+    [HttpGet(Name = "GetObjectsAsync")]
+    [Consumes(MediaTypeNames.Application.Json)]
+    [Produces(MediaTypeNames.Application.Json)]
+    [ProducesResponseType(typeof(IEnumerable<ObjectsVm>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult> GetObjectsAsync(
+        [FromQuery] GetObjectsQuery request, CancellationToken cancellationToken = default)
+    {
+        var objects = await _mediator.SendAsync(request, cancellationToken);
 
-        /// <summary>
-        /// Obtener una lista de objetos
-        /// </summary>
-        /// <remarks>
-        /// Obtiene listado de objetos
-        /// </remarks>
-        /// <response code="201">Solicitud exitosa</response>
-        /// <response code="400">Solicitud incorrecta</response>
-        /// <response code="401">No autorizado</response>
-        /// <response code="404">No encontrado</response>
-        /// <response code="422">Entidad no procesable</response> 
-        /// <response code="500">Error interno del servidor</response>      
-        [HttpGet(Name = "GetObjectsAsync")]
-        [Consumes(MediaTypeNames.Application.Json)]
-        [Produces(MediaTypeNames.Application.Json)]
-        [ProducesResponseType(typeof(BadRequestVm), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(UnprocessableVm), StatusCodes.Status422UnprocessableEntity)]
-        [ProducesResponseType(typeof(IEnumerable<ObjectsVm>), StatusCodes.Status200OK)]
-        public async Task<ActionResult> GetObjectsAsync([FromQuery] GetObjectsQuery query)
-        {
-            var objects = await _mediator.SendAsync(query);
+        return Response(objects);
+    }
 
-            return Response(objects);
-        }
+    /// <summary>
+    /// Obtener una url firmada para cargar un archivo a MinIO
+    /// </summary>
+    /// <remarks>
+    /// Obtiene una url firmada y los parámetros para cargar un archivo a un bucket de MinIO según el formato de carga masiva especificado
+    /// </remarks>
+    /// <param name="request">Parámetros para crear un objeto</param>
+    /// <param name="cancellationToken">Código de cancelación para la operación asincrónica</param>
+    /// <response code="201">Solicitud exitosa</response>
+    /// <response code="400">Solicitud incorrecta</response>
+    /// <response code="401">No autorizado</response>
+    /// <response code="404">No encontrado</response>
+    /// <response code="422">Entidad no procesable</response> 
+    /// <response code="500">Error interno del servidor</response>      
+    [HttpPost(Name = "CreateObjectAsync")]
+    [Consumes(MediaTypeNames.Application.Json)]
+    [Produces(MediaTypeNames.Application.Json)]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult> CreateObjectAsync(
+        [FromBody] CreateObjectCommand request, CancellationToken cancellationToken = default)
+    {
+        await _mediator.SendAsync(request, cancellationToken);
 
-        /// <summary>
-        /// Obtener una url firmada para cargar un archivo a MinIO
-        /// </summary>
-        /// <remarks>
-        /// Obtiene una url firmada y los parámetros para cargar un archivo a un bucket de MinIO según el formato de carga masiva especificado
-        /// </remarks>
-        /// <response code="201">Solicitud exitosa</response>
-        /// <response code="400">Solicitud incorrecta</response>
-        /// <response code="401">No autorizado</response>
-        /// <response code="404">No encontrado</response>
-        /// <response code="422">Entidad no procesable</response> 
-        /// <response code="500">Error interno del servidor</response>      
-        [HttpPost(Name = "CreateObjectAsync")]
-        [Consumes(MediaTypeNames.Application.Json)]
-        [Produces(MediaTypeNames.Application.Json)]
-        [ProducesResponseType(typeof(BadRequestVm), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(UnprocessableVm), StatusCodes.Status422UnprocessableEntity)]
-        public async Task<ActionResult> CreateObjectAsync([FromBody] CreateObjectCommand command)
-        {
-            await _mediator.SendAsync(command);
+        return Response();
+    }
 
-            return Response();
-        }
+    /// <summary>
+    /// Actualizar el estado de un objeto a subido
+    /// </summary>
+    /// <remarks>
+    /// Actualiza el estado un objeto de planilla de prefirmado a subido
+    /// </remarks>
+    /// <param name="objectCode" example="4352279a-d37b-4f80-8bd8-42e018d7a98a">Código único de objeto que necesita ser actualizado</param>
+    /// <param name="cancellationToken">Token de cancelación</param>
+    /// <response code="200">Solicitud exitosa</response>
+    /// <response code="400">Solicitud incorrecta</response>
+    /// <response code="401">No autorizado</response>
+    /// <response code="404">No encontrado</response>
+    /// <response code="422">Entidad no procesable</response> 
+    /// <response code="500">Error interno del servidor</response>
+    [HttpPatch("{objectCode}/state/uploaded", Name = "UploadObjectAsync")]
+    [Consumes(MediaTypeNames.Application.Json)]
+    [Produces(MediaTypeNames.Application.Json)]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult> UploadObjectAsync(
+        [FromRoute] string objectCode, CancellationToken cancellationToken = default)
+    {
+        var command = new UploadObjectCommand(objectCode);
 
-        /// <summary>
-        /// Actualizar el estado de un objeto a subido
-        /// </summary>
-        /// <remarks>
-        /// Actualiza el estado un objeto de planilla de prefirmado a subido
-        /// </remarks>
-        /// <param name="objectCode" example="4352279a-d37b-4f80-8bd8-42e018d7a98a">Código único de objeto que necesita ser actualizado</param>
-        /// <response code="200">Solicitud exitosa</response>
-        /// <response code="400">Solicitud incorrecta</response>
-        /// <response code="401">No autorizado</response>
-        /// <response code="404">No encontrado</response>
-        /// <response code="422">Entidad no procesable</response> 
-        /// <response code="500">Error interno del servidor</response>
-        [HttpPatch("{objectCode}/state/uploaded", Name = "UploadObjectAsync")]
-        [Consumes(MediaTypeNames.Application.Json)]
-        [Produces(MediaTypeNames.Application.Json)]
-        [ProducesResponseType(typeof(BadRequestVm), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(UnprocessableVm), StatusCodes.Status422UnprocessableEntity)]
-        public async Task<ActionResult> UploadObjectAsync([FromRoute] string objectCode)
-        {
-            var command = new UploadObjectCommand(objectCode);
+        await _mediator.SendAsync(command, cancellationToken);
 
-            await _mediator.SendAsync(command);
+        return Response();
+    }
 
-            return Response();
-        }
-
-        /// <summary>
-        /// Obtener la presigned url
-        /// </summary>
-        /// <remarks>
-        /// Poder realizar la descarga del archivo
-        /// </remarks>
-        /// <response code="200">Solicitud exitosa</response>
-        /// <response code="400">Solicitud incorrecta</response>
-        /// <response code="401">No autorizado</response>
-        /// <response code="404">No encontrado</response>
-        /// <response code="422">Entidad no procesable</response> 
-        /// <response code="500">Error interno del servidor</response>
-        [HttpGet("get-presigned-url")]
-        [Consumes(MediaTypeNames.Application.Json)]
-        [Produces(MediaTypeNames.Application.Json)]
-        [ProducesResponseType(typeof(BadRequestVm), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(UnprocessableVm), StatusCodes.Status422UnprocessableEntity)]
-        [ProducesResponseType(typeof(GetObjectPresignedUrlVm), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetPresignedUrl([FromQuery] GetObjectPresignedUrlQuery query)
-        {
-            var result = await _mediator.SendAsync(query);
-            return Ok(result);
-        }
+    /// <summary>
+    /// Obtener la presigned url
+    /// </summary>
+    /// <remarks>
+    /// Poder realizar la descarga del archivo
+    /// </remarks>
+    /// <param name="request">Parámetros para obtener la URL prefirmada</param>
+    /// <param name="cancellationToken">Código de cancelación para la operación asincrónica</param>
+    /// <response code="200">Solicitud exitosa</response>
+    /// <response code="400">Solicitud incorrecta</response>
+    /// <response code="401">No autorizado</response>
+    /// <response code="404">No encontrado</response>
+    /// <response code="422">Entidad no procesable</response> 
+    /// <response code="500">Error interno del servidor</response>
+    [HttpGet("get-presigned-url")]
+    [Consumes(MediaTypeNames.Application.Json)]
+    [Produces(MediaTypeNames.Application.Json)]
+    [ProducesResponseType(typeof(GetObjectPresignedUrlVm), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetPresignedUrl(
+        [FromQuery] GetObjectPresignedUrlQuery request, CancellationToken cancellationToken = default)
+    {
+        var result = await _mediator.SendAsync(request, cancellationToken);
+        return Ok(result);
     }
 }

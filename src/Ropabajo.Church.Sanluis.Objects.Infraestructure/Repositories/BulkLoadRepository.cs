@@ -3,54 +3,57 @@ using Ropabajo.Church.Sanluis.Objects.Application.Contracts.Persistence;
 using Ropabajo.Church.Sanluis.Objects.Domain.Entities;
 using Ropabajo.Church.Sanluis.Objects.Infraestructure.Persistence;
 
-namespace Ropabajo.Church.Sanluis.Objects.Infraestructure.Repositories
+namespace Ropabajo.Church.Sanluis.Objects.Infraestructure.Repositories;
+
+public class BulkLoadRepository : RepositoryBase<BulkLoad>, IBulkLoadRepository
 {
-    public class BulkLoadRepository : RepositoryBase<BulkLoad>, IBulkLoadRepository
+    public BulkLoadRepository(DatabaseContext dbContext) : base(dbContext)
+    { }
+
+    public async Task<IEnumerable<BulkLoad>> GetPagedAsync(
+        Guid? formatCode,
+        int pageNumber,
+        int pageSize, 
+        CancellationToken cancellationToken = default
+        )
     {
-        public BulkLoadRepository(DatabaseContext dbContext) : base(dbContext)
-        { }
+        var query = from bl in _dbContext.BulkLoads
+                    where
+                        (!formatCode.HasValue || bl.FormatCode == formatCode.Value)
+                        && !bl.Delete
+                    select new BulkLoad()
+                    {
+                        Id = bl.Id,
+                        Code = bl.Code,
+                        ObjectCode = bl.ObjectCode,
+                        Description = bl.Description,
+                        StateCode = bl.StateCode,
+                        Date = bl.Date,
+                        User = bl.User,
+                        Records = bl.Records,
+                        UploadedRecords = bl.UploadedRecords,
+                        ObservedRecords = bl.ObservedRecords,
+                        CreatedDate = bl.CreatedDate,
+                    };
 
-        public async Task<IEnumerable<BulkLoad>> GetPagedAsync(
-            Guid? formatCode,
-            int pageNumber,
-            int pageSize
-            )
-        {
-            var query = from bl in _dbContext.BulkLoads
-                        where
-                            (!formatCode.HasValue || bl.FormatCode == formatCode.Value)
-                            && !bl.Delete
-                        select new BulkLoad()
-                        {
-                            Id = bl.Id,
-                            Code = bl.Code,
-                            ObjectCode = bl.ObjectCode,
-                            Description = bl.Description,
-                            StateCode = bl.StateCode,
-                            Date = bl.Date,
-                            User = bl.User,
-                            Records = bl.Records,
-                            UploadedRecords = bl.UploadedRecords,
-                            ObservedRecords = bl.ObservedRecords,
-                            CreatedDate = bl.CreatedDate,
-                        };
+        return await query
+        .OrderByDescending(x => x.Id)
+        .Skip((pageNumber - 1) * pageSize)
+        .Take(pageSize)
+        .ToListAsync(cancellationToken);
+    }
 
-            return await query
-            .OrderByDescending(x => x.Id)
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-        }
+    public async Task<int> GetTotalAsync(
+        Guid? formatCode,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var query = from bl in _dbContext.BulkLoads
+                    where
+                        (!formatCode.HasValue || bl.FormatCode == formatCode.Value)
+                        && !bl.Delete
+                    select bl;
 
-        public async Task<int> GetTotalAsync(Guid? formatCode)
-        {
-            var query = from bl in _dbContext.BulkLoads
-                        where
-                            (!formatCode.HasValue || bl.FormatCode == formatCode.Value)
-                            && !bl.Delete
-                        select bl;
-
-            return await query.CountAsync();
-        }
+        return await query.CountAsync(cancellationToken);
     }
 }

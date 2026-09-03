@@ -1,60 +1,51 @@
 ﻿using AutoMapper;
-using FluentValidation;
 using MediatR;
 using Ropabajo.Churc.Sanluis.Framework.Mediator;
 using Ropabajo.Church.Sanluis.Objects.Application.Contracts.Persistence;
 
-namespace Ropabajo.Church.Sanluis.Objects.Application.Features.BulkLoadStates.Queries.GetBulkLoadStates
+namespace Ropabajo.Church.Sanluis.Objects.Application.Features.BulkLoadStates.Queries.GetBulkLoadStates;
+
+public class GetBulkLoadStatesQueryHandler
+    : QueryHandler, IRequestHandler<GetBulkLoadStatesQuery, IEnumerable<BulkLoadStatesVm>>
 {
-    public class GetBulkLoadStatesQueryHandler
-        : QueryHandler, IRequestHandler<GetBulkLoadStatesQuery, IEnumerable<BulkLoadStatesVm>>
+    private readonly IMediatorBus _bus;
+    private readonly IMapper _mapper;
+    private readonly IBulkLoadRepository _bulkLoadRepository;
+    private readonly IBulkLoadStateRepository _bulkLoadStateRepository;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="GetBulkLoadStatesQueryHandler"/> class.
+    /// </summary>
+    /// <param name="bus">The mediator bus.</param>
+    /// <param name="mapper">The mapper.</param>
+    /// <param name="bulkLoadRepository">The bulk load repository.</param>
+    /// <param name="bulkLoadStateRepository">The bulk load state repository.</param>
+    /// <exception cref="ArgumentNullException"></exception>
+    public GetBulkLoadStatesQueryHandler(
+        IMediatorBus bus,
+        IMapper mapper,
+        IBulkLoadRepository bulkLoadRepository,
+        IBulkLoadStateRepository bulkLoadStateRepository
+    ) : base(bus)
     {
-        private readonly IMediatorBus _bus;
-        private readonly IMapper _mapper;
-        private readonly IValidator<GetBulkLoadStatesQuery> _validator;
-        private readonly IBulkLoadRepository _bulkLoadRepository;
-        private readonly IBulkLoadStateRepository _bulkLoadStateRepository;
+        _bus = bus ?? throw new ArgumentNullException(nameof(bus));
+        _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+        _bulkLoadRepository = bulkLoadRepository ?? throw new ArgumentNullException(nameof(bulkLoadRepository));
+        _bulkLoadStateRepository = bulkLoadStateRepository ?? throw new ArgumentNullException(nameof(bulkLoadStateRepository));
+    }
 
-        public GetBulkLoadStatesQueryHandler(
-            IMediatorBus bus,
-            IMapper mapper,
-            IValidator<GetBulkLoadStatesQuery> validator,
-            IBulkLoadRepository bulkLoadRepository,
-            IBulkLoadStateRepository bulkLoadStateRepository
-        ) : base(bus)
+    public async Task<IEnumerable<BulkLoadStatesVm>> Handle(
+        GetBulkLoadStatesQuery query, CancellationToken cancellationToken)
+    {
+        var bulkLoad = await _bulkLoadRepository.GetOneAsync(x => x.Code == query.BulkLoadCode && !x.Delete, cancellationToken);
+        if (bulkLoad is null)
         {
-            _bus = bus ?? throw new ArgumentNullException(nameof(bus));
-            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
-            _validator = validator ?? throw new ArgumentNullException(nameof(validator));
-            _bulkLoadRepository = bulkLoadRepository ?? throw new ArgumentNullException(nameof(bulkLoadRepository));
-            _bulkLoadStateRepository = bulkLoadStateRepository ?? throw new ArgumentNullException(nameof(bulkLoadStateRepository));
+            await _bus.RaiseAsync(new Notification("404", "No se encontró la carga masiva.", NotificationType.BadRequest), cancellationToken);
+            return [];
         }
 
-        public async Task<IEnumerable<BulkLoadStatesVm>> Handle(
-            GetBulkLoadStatesQuery query, CancellationToken cancellationToken)
-        {
-            var validationResult = await _validator.ValidateAsync(query);
-            if (!validationResult.IsValid)
-            {
-                await RaiseErrrosAsync(validationResult);
-                return null;
-            }
+        var bulkLoadStatus = await _bulkLoadStateRepository.GetAsync(x => x.BulkLoadId == bulkLoad.Id, cancellationToken);
 
-            var bulkLoad = await _bulkLoadRepository.GetOneAsync(x => x.Code == query.BulkLoadCode && !x.Delete);
-            if (bulkLoad is null)
-            {
-                await _bus.RaiseAsync(new Notification(NotificationType.NotFound));
-                return null;
-            }
-
-            var bulkLoadStatus = await _bulkLoadStateRepository.GetAsync(x => x.BulkLoadId == bulkLoad.Id);
-            if (!bulkLoadStatus.Any())
-            {
-                await _bus.RaiseAsync(new Notification(NotificationType.NotContent));
-                return null;
-            }
-
-            return _mapper.Map<IEnumerable<BulkLoadStatesVm>>(bulkLoadStatus);
-        }
+        return _mapper.Map<IEnumerable<BulkLoadStatesVm>>(bulkLoadStatus);
     }
 }

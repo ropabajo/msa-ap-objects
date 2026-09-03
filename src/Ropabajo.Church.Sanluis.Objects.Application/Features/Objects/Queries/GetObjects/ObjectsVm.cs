@@ -1,17 +1,16 @@
-﻿namespace Ropabajo.Church.Sanluis.Objects.Application.Features.Departments.Queries.GetObjects
-{
-    public class ObjectsVm
-    {
-        /// <summary>
-        /// Código objeto
-        /// </summary>
-        /// <example>2</example>
-        public Guid ObjectCode { get; set; }
+﻿namespace Ropabajo.Church.Sanluis.Objects.Application.Features.Departments.Queries.GetObjects;
 
-        /// <summary>
-        /// Nombre objeto
-        /// </summary>
-        /// <example>LIMA</example>
-        public string ObjectName { get; set; } = null!;
-    }
+public class ObjectsVm
+{
+    /// <summary>
+    /// Código objeto
+    /// </summary>
+    /// <example>2</example>
+    public Guid ObjectCode { get; set; }
+
+    /// <summary>
+    /// Nombre objeto
+    /// </summary>
+    /// <example>LIMA</example>
+    public string ObjectName { get; set; } = null!;
 }

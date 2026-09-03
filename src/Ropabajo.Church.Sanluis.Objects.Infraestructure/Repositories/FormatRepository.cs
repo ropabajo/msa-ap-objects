@@ -2,12 +2,11 @@
 using Ropabajo.Church.Sanluis.Objects.Domain.Entities;
 using Ropabajo.Church.Sanluis.Objects.Infraestructure.Persistence;
 
-namespace Ropabajo.Church.Sanluis.Objects.Infraestructure.Repositories
+namespace Ropabajo.Church.Sanluis.Objects.Infraestructure.Repositories;
+
+public class FormatRepository : RepositoryBase<Format>, IFormatRepository
 {
-    public class FormatRepository : RepositoryBase<Format>, IFormatRepository
+    public FormatRepository(DatabaseContext dbContext) : base(dbContext)
     {
-        public FormatRepository(DatabaseContext dbContext) : base(dbContext)
-        {
-        }
     }
 }

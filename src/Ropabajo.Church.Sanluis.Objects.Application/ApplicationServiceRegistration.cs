@@ -1,21 +1,20 @@
 ﻿using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
 using Ropabajo.Churc.Sanluis.Framework.Mediator;
 using Ropabajo.Churc.Sanluis.Framework.RabbitMq;
-using System.Reflection;
 
-namespace Ropabajo.Church.Sanluis.Objects.Application
+namespace Ropabajo.Church.Sanluis.Objects.Application;
+
+public static class ApplicationServiceRegistration
 {
-    public static class ApplicationServiceRegistration
+    public static IServiceCollection AddApplication(this IServiceCollection services)
     {
-        public static IServiceCollection AddApplication(this IServiceCollection services)
-        {
-            services.AddAutoMapper(Assembly.GetExecutingAssembly());
-            services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
-            services.AddMediator(Assembly.GetExecutingAssembly());
-            services.AddRabbitMq(Assembly.GetExecutingAssembly());
+        services.AddAutoMapper(_ => { }, Assembly.GetExecutingAssembly());
+        services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+        services.AddMediator(Assembly.GetExecutingAssembly());
+        services.AddRabbitMq(Assembly.GetExecutingAssembly());
 
-            return services;
-        }
+        return services;
     }
 }
