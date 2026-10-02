@@ -25,3 +25,6 @@ docker push ropbajo/msa-ap-objects:v1.0
 
 ## para acceder a la virtual
 ssh root@161.132.54.155
+
+
+dotnet run --project D:\gitRopabajo\msa-ap-objects\src\Ropabajo.Church.Sanluis.Objects.Api\Ropabajo.Church.Sanluis.Objects.Api.csproj --launch-profile local
