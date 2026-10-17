@@ -1,0 +1,218 @@
+name: Objects Local - build, publish and deploy
+
+on:
+  push:
+    branches: [development]
+  workflow_dispatch:
+    inputs:
+      image_digest:
+        description: 'Optional sha256:... from a previous run: deploy without rebuilding'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: objects-local-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/development' && inputs.image_digest == ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      digest: ${{ steps.image.outputs.digest }}
+    env:
+      FRAMEWORK_REVISION: d03fc4bc1742d704eaf602955cd907f23681aa2e
+      IMAGE_TAG: ropbajo/msa-ap-objects:development-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+    steps:
+      - name: Check required secret bindings
+        env:
+          PACKAGE_USER: ${{ secrets.USERNAME }}
+          PACKAGE_TOKEN: ${{ secrets.TOKEN }}
+          DOCKER_USER: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        run: |
+          for binding in PACKAGE_USER PACKAGE_TOKEN DOCKER_USER DOCKER_PASSWORD; do
+            if [ -z "${!binding}" ]; then
+              echo "::error::Required credential binding missing: $binding"
+              exit 1
+            fi
+          done
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Checkout the verified framework revision
+        uses: actions/checkout@v4
+        with:
+          repository: robertpablo/ap-framework
+          ref: ${{ env.FRAMEWORK_REVISION }}
+          token: ${{ secrets.TOKEN }}
+          path: .framework
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.402'
+      - name: Build Authz and Objects, run tests, and prepare sanitized context
+        env:
+          NuGetPackageSourceCredentials_GitHub: Username=${{ secrets.USERNAME }};Password=${{ secrets.TOKEN }};ValidAuthenticationTypes=Basic
+        run: |
+          set -euo pipefail
+          umask 077
+          image_dir="$RUNNER_TEMP/objects-local-image"
+          test ! -e "$image_dir"
+          mkdir -p "$image_dir/app" "$image_dir/packages" "$image_dir/tests"
+          export LOCAL_AUTHZ_FEED="$image_dir/packages"
+          cat > "$RUNNER_TEMP/public.config" <<'XML'
+          <configuration><packageSources><clear/><add key="nuget.org" value="https://api.nuget.org/v3/index.json"/></packageSources></configuration>
+          XML
+          cat > "$RUNNER_TEMP/restore.config" <<'XML'
+          <configuration>
+            <packageSources>
+              <clear/>
+              <add key="LocalAuthz" value="%LOCAL_AUTHZ_FEED%"/>
+              <add key="GitHub" value="https://nuget.pkg.github.com/robertpablo/index.json"/>
+              <add key="nuget.org" value="https://api.nuget.org/v3/index.json"/>
+            </packageSources>
+            <packageSourceMapping>
+              <packageSource key="LocalAuthz"><package pattern="Ropabajo.Churc.Sanluis.Framework.Authz"/></packageSource>
+              <packageSource key="GitHub"><package pattern="Ropabajo.*"/></packageSource>
+              <packageSource key="nuget.org"><package pattern="*"/></packageSource>
+            </packageSourceMapping>
+          </configuration>
+          XML
+          # The optional override is for an already provisioned local package feed.
+          restore_config="${RESTORE_CONFIG_OVERRIDE:-$RUNNER_TEMP/restore.config}"
+          framework_root="$(cd "$GITHUB_WORKSPACE/.framework" && pwd -P)"
+          authz_tests="$framework_root/authz/Ropabajo.Churc.Sanluis.Framework.Authz.Tests/Ropabajo.Churc.Sanluis.Framework.Authz.Tests.csproj"
+          authz_project="$framework_root/authz/Ropabajo.Churc.Sanluis.Framework.Authz/Ropabajo.Churc.Sanluis.Framework.Authz.csproj"
+          dotnet restore "$authz_tests" --configfile "$RUNNER_TEMP/public.config" --disable-parallel
+          dotnet test "$authz_tests" --no-restore -c Release --logger 'trx;LogFileName=authz.trx' --results-directory "$image_dir/tests" -m:2
+          dotnet pack "$authz_project" --no-restore -c Release -o "$LOCAL_AUTHZ_FEED" -m:2
+          test -f "$LOCAL_AUTHZ_FEED/Ropabajo.Churc.Sanluis.Framework.Authz.1.1.4-dev.1.nupkg"
+          objects_api=src/Ropabajo.Church.Sanluis.Objects.Api/Ropabajo.Church.Sanluis.Objects.Api.csproj
+          printf '%s\n' 'No application test project exists; shared Authz suite executed above.'
+          dotnet restore "$objects_api" --configfile "$restore_config" --disable-parallel
+          dotnet publish "$objects_api" --no-restore -c Release -o "$image_dir/app" -m:2
+          # Publish output is the entire Docker context. Exclude every source setting.
+          find "$image_dir/app" -maxdepth 1 -name 'appsettings*.json' -type f -delete
+          jq -n '{Logging:{LogLevel:{Default:"Warning","Microsoft.Hosting.Lifetime":"Information"}},AllowedHosts:"*"}' > "$image_dir/app/appsettings.json"
+          jq '{
+            ConnectionStrings:{DefaultConnection:""},
+            Swagger:.Swagger,
+            Keycloak:{Authority:"https://auth-dev.idnsanluis.org/realms/church",Audience:"account",AuthorizedParty:"web-ap-container",RoleClient:"web-ap-container",Enabled:true,RequireHttpsMetadata:true},
+            Redis:{Host:"redis-shared.church-dev.svc.cluster.local",Port:6379,Database:1,Ssl:false,User:"",Password:""},
+            RabbitMq:{HostName:"rabbitmq-shared.church-dev.svc.cluster.local",Port:5672,VirtualHost:"local-vhost",UseSsl:false,UserName:"",Password:""},
+            MinIo:{Endpoint:"minio-api.ropabajo.pe",UseSsl:true,BucketName:"church-dev",AccessKey:"",SecretKey:""}
+          }' src/Ropabajo.Church.Sanluis.Objects.Api/appsettings.Local.json > "$image_dir/app/appsettings.Local.json"
+          jq -e '.libraries | has("Ropabajo.Churc.Sanluis.Framework.Authz/1.1.4-dev.1")' "$image_dir/app/Ropabajo.Church.Sanluis.Objects.Api.deps.json" > /dev/null
+          jq -e '.ConnectionStrings.DefaultConnection == "" and .Redis.Database == 1 and .Redis.Password == "" and .Redis.User == "" and .RabbitMq.UserName == "" and .RabbitMq.Password == "" and .MinIo.AccessKey == "" and .MinIo.SecretKey == ""' "$image_dir/app/appsettings.Local.json" > /dev/null
+          test "$(find "$image_dir/app" -maxdepth 1 -name 'appsettings*.json' | wc -l)" -eq 2
+          cat > "$image_dir/Dockerfile" <<'DOCKER'
+          FROM mcr.microsoft.com/dotnet/aspnet@sha256:d5633778c754e89a386882eddf8dbee6942447a8a4b8267c19cf1e1158d0b0ac
+          WORKDIR /app
+          ENV ASPNETCORE_ENVIRONMENT=Local ASPNETCORE_URLS=http://+:8080 spring__cloud__config__enabled=false
+          COPY app/ ./
+          ENTRYPOINT ["dotnet", "Ropabajo.Church.Sanluis.Objects.Api.dll"]
+          DOCKER
+          printf '%s\n' '*' '!app/' '!app/**' '!Dockerfile' > "$image_dir/.dockerignore"
+          authz_sha=$(sha256sum "$image_dir/app/Ropabajo.Churc.Sanluis.Framework.Authz.dll" | cut -d' ' -f1)
+          jq -n --arg source "$(git rev-parse HEAD)" --arg framework "$(git -C .framework rev-parse HEAD)" --arg authz "$authz_sha" \
+            '{sourceCommit:$source,frameworkCommit:$framework,authzAssemblySha256:$authz,authzPackageVersion:"1.1.4-dev.1",sanitizedLocalSettingsIncluded:true,runtimeSecretsRequired:true,redisDatabase:1}' > "$image_dir/provenance.json"
+      - uses: docker/setup-buildx-action@v3
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Publish an immutable development tag
+        id: image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ runner.temp }}/objects-local-image
+          file: ${{ runner.temp }}/objects-local-image/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.IMAGE_TAG }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            church.environment=dev
+      - name: Record the registry digest for church-dev
+        id: release
+        env:
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          set -euo pipefail
+          [[ "$IMAGE_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]
+          image="ropbajo/msa-ap-objects@$IMAGE_DIGEST"
+          metadata="$RUNNER_TEMP/objects-local-metadata"
+          mkdir -m 700 "$metadata"
+          jq -n --arg image "$image" '{"msa-ap-objects":$image}' > "$metadata/images.objects.json"
+          jq --arg image "$image" --arg tag "$IMAGE_TAG" --arg digest "$IMAGE_DIGEST" \
+            '. + {image:$image,tag:$tag,registryDigest:$digest}' \
+            "$RUNNER_TEMP/objects-local-image/provenance.json" > "$metadata/provenance.json"
+          printf 'image=%s\n' "$image" >> "$GITHUB_OUTPUT"
+          printf 'Objects Local image published: `%s`\n\nSee the deploy job for the server outcome.\n' \
+            "$image" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: objects-local-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/objects-local-metadata/
+          if-no-files-found: error
+      - name: Upload Authz and Objects test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: objects-local-tests-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/objects-local-image/tests/
+          if-no-files-found: ignore
+
+  deploy:
+    name: Deploy YAML to church-dev
+    needs: publish
+    if: >-
+      always() && !cancelled() && github.ref == 'refs/heads/development' &&
+      (needs.publish.result == 'success' ||
+       (needs.publish.result == 'skipped' && inputs.image_digest != ''))
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Select the immutable release
+        id: release
+        env:
+          PUBLISHED_DIGEST: ${{ needs.publish.outputs.digest }}
+          REQUESTED_DIGEST: ${{ inputs.image_digest }}
+        run: |
+          set -euo pipefail
+          image="ropbajo/msa-ap-objects@$PUBLISHED_DIGEST"
+          if [[ -n "$REQUESTED_DIGEST" ]]; then
+            [[ "$REQUESTED_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]
+            image="ropbajo/msa-ap-objects@$REQUESTED_DIGEST"
+          fi
+          [[ "$image" =~ ^ropbajo/msa-ap-objects@sha256:[a-f0-9]{64}$ ]]
+          printf 'image=%s\n' "$image" >> "$GITHUB_OUTPUT"
+      - name: Checkout the verified development recipes
+        uses: actions/checkout@v4
+        with:
+          repository: ropabajo/k8s-recipes
+          # Shared deployer and YAML recipes reviewed together at this exact commit.
+          ref: b8f02b29cb261cc0d2926a95066964ec21c57df2
+          token: ${{ secrets.TOKEN }}
+          path: .recipes
+          persist-credentials: false
+      - name: Deploy Objects using the common YAML operator
+        uses: ./.recipes/.github/actions/deploy-church-dev
+        with:
+          manifests: environments/church-dev/manifests/objects
+          image: ${{ steps.release.outputs.image }}
+          image-repository: ropbajo/msa-ap-objects
+          application: dev-objects
+          container: dev-objects
+          node-port: '30002'
+          public-health-url: https://dev.idnsanluis.org/ap-objects/health
+          server-ip: ${{ secrets.SERVER_IP }}
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
