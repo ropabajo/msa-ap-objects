@@ -37,3 +37,7 @@ ssh root@161.132.54.155
 
 
 dotnet run --project D:\gitRopabajo\msa-ap-objects\src\Ropabajo.Church.Sanluis.Objects.Api\Ropabajo.Church.Sanluis.Objects.Api.csproj --launch-profile local
+
+## Configuración Local
+
+Ver [settings, variables de entorno y secretos](docs/CONFIGURACION-LOCAL.md).

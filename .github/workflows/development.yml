@@ -100,14 +100,18 @@ jobs:
           dotnet publish "$objects_api" --no-restore -c Release -o "$image_dir/app" -m:2
           # Publish output is the entire Docker context. Exclude every source setting.
           find "$image_dir/app" -maxdepth 1 -name 'appsettings*.json' -type f -delete
-          jq -n '{Logging:{LogLevel:{Default:"Warning","Microsoft.Hosting.Lifetime":"Information"}},AllowedHosts:"*"}' > "$image_dir/app/appsettings.json"
+          jq '{Logging:.Logging,AllowedHosts:.AllowedHosts}' src/Ropabajo.Church.Sanluis.Objects.Api/appsettings.Local.json > "$image_dir/app/appsettings.json"
           jq '{
             ConnectionStrings:{DefaultConnection:""},
             Swagger:.Swagger,
-            Keycloak:{Authority:"https://auth-dev.idnsanluis.org/realms/church",Audience:"account",AuthorizedParty:"web-ap-container",RoleClient:"web-ap-container",Enabled:true,RequireHttpsMetadata:true},
-            Redis:{Host:"redis-shared.church-dev.svc.cluster.local",Port:6379,Database:1,Ssl:false,User:"",Password:""},
-            RabbitMq:{HostName:"rabbitmq-shared.church-dev.svc.cluster.local",Port:5672,VirtualHost:"local-vhost",UseSsl:false,UserName:"",Password:""},
-            MinIo:{Endpoint:"minio-api.ropabajo.pe",UseSsl:true,BucketName:"church-dev",AccessKey:"",SecretKey:""}
+            Logging:.Logging,
+            AllowedHosts:.AllowedHosts,
+            Base:.Base,
+            spring:.spring,
+            Keycloak:(.Keycloak | {Authority,Audience,AuthorizedParty,RoleClient,Enabled,RequireHttpsMetadata}),
+            Redis:(.Redis | {Host,Port,Database,Ssl,User:"",Password:""}),
+            RabbitMq:(.RabbitMq | {HostName,Port,VirtualHost,UseSsl,UserName:"",Password:""}),
+            MinIo:(.MinIo | {Endpoint,UseSsl,BucketName,AccessKey:"",SecretKey:""})
           }' src/Ropabajo.Church.Sanluis.Objects.Api/appsettings.Local.json > "$image_dir/app/appsettings.Local.json"
           jq -e '.libraries | has("Ropabajo.Churc.Sanluis.Framework.Authz/1.1.4-dev.1")' "$image_dir/app/Ropabajo.Church.Sanluis.Objects.Api.deps.json" > /dev/null
           jq -e '.ConnectionStrings.DefaultConnection == "" and .Redis.Database == 1 and .Redis.Password == "" and .Redis.User == "" and .RabbitMq.UserName == "" and .RabbitMq.Password == "" and .MinIo.AccessKey == "" and .MinIo.SecretKey == ""' "$image_dir/app/appsettings.Local.json" > /dev/null
