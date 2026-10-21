@@ -1,0 +1,68 @@
+name: Remove merged work branch
+
+on:
+  pull_request_target:
+    types: [closed]
+    branches: [main, development]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: branch-cleanup-${{ github.event.pull_request.head.ref }}
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    if: github.event.pull_request.merged == true && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      # Execute trusted workflow code only; never check out or run pull request code.
+      - uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
+        env:
+          BRANCH_CLEANUP_TOKEN: ${{ github.token }}
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const repository = context.payload.repository;
+            const permanent = new Set(['main', 'development', 'master', repository.default_branch]);
+            if (!pr.merged || !['main', 'development'].includes(pr.base.ref) ||
+                pr.head.repo?.full_name !== repository.full_name || permanent.has(pr.head.ref)) return;
+            const name = pr.head.ref;
+            const open = await github.paginate(github.rest.pulls.list, {
+              ...context.repo, state: 'open', head: `${context.repo.owner}:${name}`, per_page: 100,
+            });
+            if (open.length) { core.info('Branch retained: another pull request is open.'); return; }
+            let branch;
+            try {
+              branch = (await github.rest.repos.getBranch({ ...context.repo, branch: name })).data;
+            } catch (error) {
+              if (error.status === 404) { core.info('Branch already removed.'); return; }
+              throw new Error('Cannot verify the branch; no deletion attempted.');
+            }
+            if (branch.protected || branch.commit.sha !== pr.head.sha) {
+              core.info('Branch retained: protected or changed after the merged pull request.'); return;
+            }
+            const { execFileSync } = require('node:child_process');
+            const { mkdtempSync, rmSync } = require('node:fs');
+            const { tmpdir } = require('node:os');
+            const { join } = require('node:path');
+            const directory = mkdtempSync(join(tmpdir(), 'merged-branch-'));
+            const authorization = Buffer.from(`x-access-token:${process.env.BRANCH_CLEANUP_TOKEN}`).toString('base64');
+            const env = { ...process.env, GIT_TERMINAL_PROMPT: '0', GIT_CONFIG_COUNT: '1',
+              GIT_CONFIG_KEY_0: 'http.https://github.com/.extraheader',
+              GIT_CONFIG_VALUE_0: `AUTHORIZATION: basic ${authorization}` };
+            try {
+              execFileSync('git', ['init', '--bare', directory], { env, stdio: 'pipe', timeout: 30000 });
+              execFileSync('git', ['-C', directory, 'push',
+                `--force-with-lease=refs/heads/${name}:${pr.head.sha}`,
+                `https://github.com/${context.repo.owner}/${context.repo.repo}.git`,
+                `:refs/heads/${name}`], { env, stdio: 'pipe', timeout: 30000 });
+              core.notice(`Removed merged work branch: ${name}`);
+            } catch {
+              throw new Error('Guarded deletion failed or the branch changed; inspect the branch before retrying.');
+            } finally {
+              rmSync(directory, { recursive: true, force: true });
+            }
