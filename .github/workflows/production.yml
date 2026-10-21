@@ -1,0 +1,40 @@
+name: Production - test and publish candidate
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  checks: write
+concurrency:
+  group: production-candidate-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: source
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: ropabajo/k8s-recipes
+          ref: 3d6067d1bc0e99538ad6107dda2e7874b3f4ca6e
+          token: ${{ secrets.TOKEN }}
+          path: .recipes
+          persist-credentials: false
+      - name: Test and publish without automatic production deployment
+        uses: ./.recipes/.github/actions/build-production-candidate
+        with:
+          application: objects
+          kind: api
+          image-repository: ropbajo/msa-ap-objects
+          source-root: ${{ github.workspace }}/source
+          package-user: ${{ secrets.USERNAME }}
+          package-token: ${{ secrets.TOKEN }}
+          docker-user: ${{ secrets.DOCKER_USERNAME }}
+          docker-password: ${{ secrets.DOCKER_PASSWORD }}

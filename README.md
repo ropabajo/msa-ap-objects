@@ -1,3 +1,12 @@
+# Objects Local en church-dev
+
+El workflow `.github/workflows/development.yml` compila/publica una imagen saneada
+y usa las recetas YAML y el operador común de IAM. Se dispara al hacer push en
+development. La primera carga privada, rutas y comprobaciones están en la
+[guía conjunta](https://github.com/ropabajo/k8s-recipes/blob/development/environments/church-dev/FLUJO-SERVICIOS.md).
+La instalación real del servidor se confirma con el resultado de Actions; un
+Secret ausente detiene el deploy antes de aplicar. No cambia el workflow de main.
+
 # msa-ap-objects
 
 # ejecutar desde infraestructura
@@ -28,3 +37,7 @@ ssh root@161.132.54.155
 
 
 dotnet run --project D:\gitRopabajo\msa-ap-objects\src\Ropabajo.Church.Sanluis.Objects.Api\Ropabajo.Church.Sanluis.Objects.Api.csproj --launch-profile local
+
+## Configuración Local
+
+Ver [settings, variables de entorno y secretos](docs/CONFIGURACION-LOCAL.md).
