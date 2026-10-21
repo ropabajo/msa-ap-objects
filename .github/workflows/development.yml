@@ -26,7 +26,7 @@ jobs:
     outputs:
       digest: ${{ steps.image.outputs.digest }}
     env:
-      FRAMEWORK_REVISION: d03fc4bc1742d704eaf602955cd907f23681aa2e
+      FRAMEWORK_REVISION: 9d64c908cd146e61e8a19816ae1c76cbb892df1a
       IMAGE_TAG: ropbajo/msa-ap-objects:development-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
       DOTNET_CLI_TELEMETRY_OPTOUT: '1'
     steps:
@@ -93,7 +93,7 @@ jobs:
           dotnet restore "$authz_tests" --configfile "$RUNNER_TEMP/public.config" --disable-parallel
           dotnet test "$authz_tests" --no-restore -c Release --logger 'trx;LogFileName=authz.trx' --results-directory "$image_dir/tests" -m:2
           dotnet pack "$authz_project" --no-restore -c Release -o "$LOCAL_AUTHZ_FEED" -m:2
-          test -f "$LOCAL_AUTHZ_FEED/Ropabajo.Churc.Sanluis.Framework.Authz.1.1.4-dev.1.nupkg"
+          test -f "$LOCAL_AUTHZ_FEED/Ropabajo.Churc.Sanluis.Framework.Authz.1.1.4.nupkg"
           objects_api=src/Ropabajo.Church.Sanluis.Objects.Api/Ropabajo.Church.Sanluis.Objects.Api.csproj
           printf '%s\n' 'No application test project exists; shared Authz suite executed above.'
           dotnet restore "$objects_api" --configfile "$restore_config" --disable-parallel
@@ -113,7 +113,7 @@ jobs:
             RabbitMq:(.RabbitMq | {HostName,Port,VirtualHost,UseSsl,UserName:"",Password:""}),
             MinIo:(.MinIo | {Endpoint,UseSsl,BucketName,AccessKey:"",SecretKey:""})
           }' src/Ropabajo.Church.Sanluis.Objects.Api/appsettings.Local.json > "$image_dir/app/appsettings.Local.json"
-          jq -e '.libraries | has("Ropabajo.Churc.Sanluis.Framework.Authz/1.1.4-dev.1")' "$image_dir/app/Ropabajo.Church.Sanluis.Objects.Api.deps.json" > /dev/null
+          jq -e '.libraries | has("Ropabajo.Churc.Sanluis.Framework.Authz/1.1.4")' "$image_dir/app/Ropabajo.Church.Sanluis.Objects.Api.deps.json" > /dev/null
           jq -e '.ConnectionStrings.DefaultConnection == "" and .Redis.Database == 1 and .Redis.Password == "" and .Redis.User == "" and .RabbitMq.UserName == "" and .RabbitMq.Password == "" and .MinIo.AccessKey == "" and .MinIo.SecretKey == ""' "$image_dir/app/appsettings.Local.json" > /dev/null
           test "$(find "$image_dir/app" -maxdepth 1 -name 'appsettings*.json' | wc -l)" -eq 2
           cat > "$image_dir/Dockerfile" <<'DOCKER'
@@ -126,7 +126,7 @@ jobs:
           printf '%s\n' '*' '!app/' '!app/**' '!Dockerfile' > "$image_dir/.dockerignore"
           authz_sha=$(sha256sum "$image_dir/app/Ropabajo.Churc.Sanluis.Framework.Authz.dll" | cut -d' ' -f1)
           jq -n --arg source "$(git rev-parse HEAD)" --arg framework "$(git -C .framework rev-parse HEAD)" --arg authz "$authz_sha" \
-            '{sourceCommit:$source,frameworkCommit:$framework,authzAssemblySha256:$authz,authzPackageVersion:"1.1.4-dev.1",sanitizedLocalSettingsIncluded:true,runtimeSecretsRequired:true,redisDatabase:1}' > "$image_dir/provenance.json"
+            '{sourceCommit:$source,frameworkCommit:$framework,authzAssemblySha256:$authz,authzPackageVersion:"1.1.4",sanitizedLocalSettingsIncluded:true,runtimeSecretsRequired:true,redisDatabase:1}' > "$image_dir/provenance.json"
       - uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
         uses: docker/login-action@v3
