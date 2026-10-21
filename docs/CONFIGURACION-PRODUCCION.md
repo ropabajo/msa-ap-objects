@@ -26,3 +26,13 @@ Se conserva `dev-vhost`: es el vhost **real de producción**, confirmado por lec
 runtime el 20 de octubre de 2026. No renombrarlo por su nombre ni conectarlo a
 `local-vhost`, que pertenece a church-dev. Conservar contratos de eventos, bindings y
 consumidores antes de activar escrituras.
+
+## Publicación desde main
+
+El workflow `production.yml` reemplaza el despliegue heredado. Cada commit de main
+prueba y publica un candidato inmutable mediante la acción común de k8s-recipes;
+el check `production-candidate/*` y su artifact conservan digest y commit.
+**Publicar no despliega**: la promoción se hace mediante la release coordinada de
+`k8s-recipes/environments/production`, después de revisar el contrato, diff,
+dependencias y recuperación. Esto evita mezclar versiones electorales incompatibles.
+El pipeline de development conserva su contexto, dominio y configuración Local.
