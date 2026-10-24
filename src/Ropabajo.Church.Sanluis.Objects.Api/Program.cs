@@ -9,6 +9,8 @@ using Steeltoe.Configuration.ConfigServer;
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddConfigServer();
 builder.Services.AddApplication();
+builder.Services.AddScoped<Ropabajo.Church.Sanluis.Objects.Api.Controllers.TemporaryExportRequestLimitFilter>();
+builder.Services.AddScoped<Ropabajo.Church.Sanluis.Objects.Api.Controllers.TemporaryExportExceptionFilter>();
 builder.Services.AddInfrastructure();
 builder.Services.AddAuthz(builder.Configuration);
 builder.Services.AddBase();

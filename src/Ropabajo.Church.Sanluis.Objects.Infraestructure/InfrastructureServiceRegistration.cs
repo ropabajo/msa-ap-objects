@@ -33,6 +33,17 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<IBulkLoadResultRepository, BulkLoadResultRepository>();
         services.AddScoped<IFormatRepository, FormatRepository>();
 
+        services.AddOptions<Ropabajo.Church.Sanluis.Objects.Application.Features.TemporaryExports.TemporaryExportOptions>()
+            .Bind(configuration.GetSection("TemporaryExports")).ValidateDataAnnotations().ValidateOnStart();
+        services.AddSingleton(TimeProvider.System);
+        services.AddHttpContextAccessor();
+        services.AddScoped<Ropabajo.Church.Sanluis.Objects.Application.Features.TemporaryExports.IExportActor, TemporaryExports.HttpExportActor>();
+        services.AddSingleton<Ropabajo.Church.Sanluis.Objects.Application.Features.TemporaryExports.IExportObjectStore, TemporaryExports.MinioExportObjectStore>();
+        services.AddScoped<Ropabajo.Church.Sanluis.Objects.Application.Features.TemporaryExports.IExportLeaseFactory, TemporaryExports.MySqlExportLeaseFactory>();
+        services.AddScoped<Ropabajo.Church.Sanluis.Objects.Application.Features.TemporaryExports.ITemporaryWorkbookWriter, TemporaryExports.TemporaryWorkbookWriter>();
+        services.AddScoped<Ropabajo.Church.Sanluis.Objects.Application.Features.TemporaryExports.TemporaryExportCoordinator>();
+        services.AddHostedService<TemporaryExports.TemporaryExportWorker>();
+
         return services;
     }
 }

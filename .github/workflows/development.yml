@@ -95,7 +95,9 @@ jobs:
           dotnet pack "$authz_project" --no-restore -c Release -o "$LOCAL_AUTHZ_FEED" -m:2
           test -f "$LOCAL_AUTHZ_FEED/Ropabajo.Churc.Sanluis.Framework.Authz.1.1.4-dev.1.nupkg"
           objects_api=src/Ropabajo.Church.Sanluis.Objects.Api/Ropabajo.Church.Sanluis.Objects.Api.csproj
-          printf '%s\n' 'No application test project exists; shared Authz suite executed above.'
+          objects_tests=src/Ropabajo.Church.Sanluis.Objects.Api.Tests/Ropabajo.Church.Sanluis.Objects.Api.Tests.csproj
+          dotnet restore "$objects_tests" --configfile "$restore_config" --disable-parallel
+          dotnet test "$objects_tests" --no-restore -c Release --logger 'trx;LogFileName=objects.trx' --results-directory "$image_dir/tests" -m:2
           dotnet restore "$objects_api" --configfile "$restore_config" --disable-parallel
           dotnet publish "$objects_api" --no-restore -c Release -o "$image_dir/app" -m:2
           # Publish output is the entire Docker context. Exclude every source setting.
@@ -107,6 +109,7 @@ jobs:
             Logging:.Logging,
             AllowedHosts:.AllowedHosts,
             Base:.Base,
+            TemporaryExports:.TemporaryExports,
             spring:.spring,
             Keycloak:(.Keycloak | {Authority,Audience,AuthorizedParty,RoleClient,Enabled,RequireHttpsMetadata}),
             Redis:(.Redis | {Host,Port,Database,Ssl,User:"",Password:""}),

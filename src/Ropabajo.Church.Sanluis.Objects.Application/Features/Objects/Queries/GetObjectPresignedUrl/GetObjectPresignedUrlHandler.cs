@@ -37,6 +37,13 @@ public class GetObjectPresignedUrlHandler : QueryHandler, IRequestHandler<GetObj
             objectName = objectName.Substring(_minIoOptions.BucketName.Length + 1); // Eliminar la parte del bucket y el "/"
         }
 
+        // Temporary exports must pass owner, church and expiry checks, never this generic signer.
+        if (Uri.UnescapeDataString(objectName).StartsWith("temporary-exports/", StringComparison.OrdinalIgnoreCase))
+        {
+            await _bus.RaiseAsync(new Notification("403", "Las exportaciones temporales requieren su acceso autorizado.", NotificationType.BadRequest), cancellationToken);
+            return null;
+        }
+
         if (string.IsNullOrWhiteSpace(objectName))
         {
             await _bus.RaiseAsync(new Notification("422.0002", "El template proporcionado no es válido."));

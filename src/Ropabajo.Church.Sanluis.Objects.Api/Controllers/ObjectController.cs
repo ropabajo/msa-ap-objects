@@ -158,6 +158,6 @@ public class ObjectController : ApiController
         [FromQuery] GetObjectPresignedUrlQuery request, CancellationToken cancellationToken = default)
     {
         var result = await _mediator.SendAsync(request, cancellationToken);
-        return Ok(result);
+        return result is null ? Response() : Ok(result);
     }
 }
