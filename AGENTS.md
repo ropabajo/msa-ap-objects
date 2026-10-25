@@ -12,3 +12,11 @@
 - Antes de publicar cambios de configuración, ejecutar el auditor común de
   `k8s-recipes/environments/church-dev/operations/audit-local-settings.sh`, con los
   ocho checkouts hermanos y la revisión de recetas fijada por cada workflow.
+
+## Estándar de backend Naza
+
+- Aplicar la guía canónica de `church-ropabajo/docs`, `naza/backend/lineamientos-refactor.md`, a los casos nuevos o intervenidos.
+- En este workspace está en `/workspace/docs/naza/backend/lineamientos-refactor.md`; leerla antes de ampliar el caso de uso.
+- Casos separados en Commands/Queries; DTOs propios, MappingProfile, validator, documentación XML completa y CancellationToken.
+- Los casos nuevos utilizan Result de ap-framework. Conservar contratos legacy y evitar dos canales de error en el caso migrado.
+- No ampliar por arrastre el alcance a otros casos ni modificar producción al implementar Local.

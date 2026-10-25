@@ -79,3 +79,18 @@ sanitizados por el generador real del pipeline. Comprueba esquema Redis, tipos,
 plantilla SQL y ausencia de credenciales. No se conecta al servidor ni lee Secrets.
 El informe general está en
 [k8s-recipes: auditoría Local](https://github.com/ropabajo/k8s-recipes/blob/development/environments/church-dev/AUDITORIA-SETTINGS-LOCAL.md).
+
+
+## Trabajos de archivos (piloto)
+
+Las opciones nuevas están versionadas en `appsettings.Local.json` y se incorporan
+al contexto sanitizado de la imagen desde ese mismo archivo. Permanecen desactivadas
+hasta preparar la infraestructura. Producción no cambia. Ver el procedimiento
+canónico en [docs/naza/backend/piloto-archivos.md](https://github.com/church-ropabajo/docs/blob/main/naza/backend/piloto-archivos.md).
+
+Objects consume `FileJobs` y `ConnectionStrings:FileJobs`; Church consume `FileWorker`.
+Las credenciales se inyectan por los Secrets específicos opcionales; no incluyen flags
+públicos. El runtime usa la precedencia habitual: variables de entorno sobre JSON.
+El usuario técnico Rabbit es distinto por servicio. Solo Objects conserva credenciales
+MinIO, y el worker usa una política de subida temporal, sin claves permanentes.
+El nuevo registro exige la base lógica `db_file_jobs_dev`; no permite usar db_object.

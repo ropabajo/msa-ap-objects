@@ -38,7 +38,8 @@ public class GetObjectPresignedUrlHandler : QueryHandler, IRequestHandler<GetObj
         }
 
         // Temporary exports must pass owner, church and expiry checks, never this generic signer.
-        if (Uri.UnescapeDataString(objectName).StartsWith("temporary-exports/", StringComparison.OrdinalIgnoreCase))
+        if (Uri.UnescapeDataString(objectName).StartsWith("temporary-exports/", StringComparison.OrdinalIgnoreCase)
+            || Uri.UnescapeDataString(objectName).StartsWith("file-jobs/", StringComparison.OrdinalIgnoreCase))
         {
             await _bus.RaiseAsync(new Notification("403", "Las exportaciones temporales requieren su acceso autorizado.", NotificationType.BadRequest), cancellationToken);
             return null;

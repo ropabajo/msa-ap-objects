@@ -26,9 +26,16 @@ jobs:
     outputs:
       digest: ${{ steps.image.outputs.digest }}
     env:
-      FRAMEWORK_REVISION: d03fc4bc1742d704eaf602955cd907f23681aa2e
+      FRAMEWORK_REVISION: 5266f266b746b20eb6b8dd11a15981c4f5df2b77
       IMAGE_TAG: ropbajo/msa-ap-objects:development-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
       DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+    services:
+      file-jobs-mysql:
+        image: mysql:5.7.44
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports: ['13316:3306']
+        options: --health-cmd "mysqladmin ping --silent" --health-interval 5s --health-timeout 10s --health-retries 30
     steps:
       - name: Check required secret bindings
         env:
@@ -79,7 +86,7 @@ jobs:
               <add key="nuget.org" value="https://api.nuget.org/v3/index.json"/>
             </packageSources>
             <packageSourceMapping>
-              <packageSource key="LocalAuthz"><package pattern="Ropabajo.Churc.Sanluis.Framework.Authz"/></packageSource>
+              <packageSource key="LocalAuthz"><package pattern="Ropabajo.Churc.Sanluis.Framework.Authz"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Primitives"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Mediator"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Core"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Files"/></packageSource>
               <packageSource key="GitHub"><package pattern="Ropabajo.*"/></packageSource>
               <packageSource key="nuget.org"><package pattern="*"/></packageSource>
             </packageSourceMapping>
@@ -94,6 +101,11 @@ jobs:
           dotnet test "$authz_tests" --no-restore -c Release --logger 'trx;LogFileName=authz.trx' --results-directory "$image_dir/tests" -m:2
           dotnet pack "$authz_project" --no-restore -c Release -o "$LOCAL_AUTHZ_FEED" -m:2
           test -f "$LOCAL_AUTHZ_FEED/Ropabajo.Churc.Sanluis.Framework.Authz.1.1.4-dev.1.nupkg"
+          for project in primitives/Ropabajo.Churc.Sanluis.Framework.Primitives mediator/Ropabajo.Churc.Sanluis.Framework.Mediator core/Ropabajo.Churc.Sanluis.Framework.Core files/Ropabajo.Churc.Sanluis.Framework.Files; do
+            dotnet restore "$framework_root/$project" --configfile "$RUNNER_TEMP/public.config" --disable-parallel
+            dotnet pack "$framework_root/$project" --no-restore -c Release -o "$LOCAL_AUTHZ_FEED" -m:2
+          done
+          export FILE_JOBS_TEST_MYSQL='Server=127.0.0.1;Port=13316;User ID=root;SslMode=None'
           objects_api=src/Ropabajo.Church.Sanluis.Objects.Api/Ropabajo.Church.Sanluis.Objects.Api.csproj
           objects_tests=src/Ropabajo.Church.Sanluis.Objects.Api.Tests/Ropabajo.Church.Sanluis.Objects.Api.Tests.csproj
           dotnet restore "$objects_tests" --configfile "$restore_config" --disable-parallel
@@ -104,12 +116,13 @@ jobs:
           find "$image_dir/app" -maxdepth 1 -name 'appsettings*.json' -type f -delete
           jq '{Logging:.Logging,AllowedHosts:.AllowedHosts}' src/Ropabajo.Church.Sanluis.Objects.Api/appsettings.Local.json > "$image_dir/app/appsettings.json"
           jq '{
-            ConnectionStrings:{DefaultConnection:""},
+            ConnectionStrings:{DefaultConnection:"",FileJobs:""},
             Swagger:.Swagger,
             Logging:.Logging,
             AllowedHosts:.AllowedHosts,
             Base:.Base,
             TemporaryExports:.TemporaryExports,
+            FileJobs:(.FileJobs | .Broker.UserName="" | .Broker.Password=""),
             spring:.spring,
             Keycloak:(.Keycloak | {Authority,Audience,AuthorizedParty,RoleClient,Enabled,RequireHttpsMetadata}),
             Redis:(.Redis | {Host,Port,Database,Ssl,User:"",Password:""}),
@@ -207,7 +220,7 @@ jobs:
         with:
           repository: ropabajo/k8s-recipes
           # Shared deployer and YAML recipes reviewed together at this exact commit.
-          ref: b8f02b29cb261cc0d2926a95066964ec21c57df2
+          ref: 9fae3dbead4a34c4d977fad9345d71f2ce431019
           token: ${{ secrets.TOKEN }}
           path: .recipes
           persist-credentials: false

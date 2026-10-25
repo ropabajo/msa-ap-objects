@@ -1,3 +1,5 @@
+> Documento de compatibilidad del prototipo anterior. El estándar para nuevos módulos es [archivos durables](../operations/file-jobs/README.md). No extender el protocolo de filas JSON; conservarlo únicamente durante el corte coordinado.
+
 # Exportaciones XLSX privadas y temporales
 
 El servicio existente Objects genera los Excel de miembros preparados por Church.

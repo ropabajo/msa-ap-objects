@@ -1,0 +1,87 @@
+{
+  "exchanges": [
+    {
+      "name": "development.file-jobs.v1",
+      "vhost": "local-vhost",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "development.file-jobs.dead.v1",
+      "vhost": "local-vhost",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "development.file-jobs.church.v1",
+      "vhost": "local-vhost",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "classic",
+        "x-dead-letter-exchange": "development.file-jobs.dead.v1",
+        "x-dead-letter-routing-key": "church",
+        "x-max-length": 10000,
+        "x-overflow": "reject-publish"
+      }
+    },
+    {
+      "name": "development.file-jobs.church.v1.retry",
+      "vhost": "local-vhost",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 30000,
+        "x-dead-letter-exchange": "development.file-jobs.v1",
+        "x-dead-letter-routing-key": "church",
+        "x-max-length": 10000,
+        "x-overflow": "reject-publish"
+      }
+    },
+    {
+      "name": "development.file-jobs.church.v1.dead",
+      "vhost": "local-vhost",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 2592000000,
+        "x-max-length": 10000,
+        "x-overflow": "reject-publish"
+      }
+    }
+  ],
+  "bindings": [
+    {
+      "source": "development.file-jobs.v1",
+      "vhost": "local-vhost",
+      "destination": "development.file-jobs.church.v1",
+      "destination_type": "queue",
+      "routing_key": "church",
+      "arguments": {}
+    },
+    {
+      "source": "development.file-jobs.v1",
+      "vhost": "local-vhost",
+      "destination": "development.file-jobs.church.v1.retry",
+      "destination_type": "queue",
+      "routing_key": "retry.church",
+      "arguments": {}
+    },
+    {
+      "source": "development.file-jobs.dead.v1",
+      "vhost": "local-vhost",
+      "destination": "development.file-jobs.church.v1.dead",
+      "destination_type": "queue",
+      "routing_key": "church",
+      "arguments": {}
+    }
+  ]
+}
