@@ -70,4 +70,3 @@ public sealed class FileJobOutbox
     /// <example>2026-10-25T13:00:00Z</example>
     public DateTime? DiscardedAt { get; set; }
 }
-

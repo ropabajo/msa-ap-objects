@@ -60,7 +60,7 @@ public sealed class FileJobLifecycleTests : IAsyncLifetime
         var migration = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../operations/file-jobs/001_metadata_dev.sql"));
         using var context = _factory.CreateDbContext(); var script = File.ReadAllText(migration).Replace("\r\n", "\n");
         Assert.Contains("USE `db_file_jobs_dev`;", script);
-        Assert.EndsWith(context.Database.GenerateCreateScript().Replace("\r\n", "\n"), script);
+        Assert.EndsWith(context.Database.GenerateCreateScript().Replace("\r\n", "\n").TrimEnd(), script.TrimEnd());
         Assert.DoesNotContain("USE `db_object`", script);
     }
 

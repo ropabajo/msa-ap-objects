@@ -115,5 +115,3 @@ CREATE INDEX `IX_file_jobs_Environment_ChurchCode_OwnerHash_Sequence` ON `file_j
 
 
 CREATE INDEX `IX_file_jobs_Environment_Status_LeaseUntil` ON `file_jobs` (`Environment`, `Status`, `LeaseUntil`);
-
-

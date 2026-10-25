@@ -76,4 +76,3 @@ public sealed class FileJobArtifact
     /// <example>2026-10-26T12:01:00Z</example>
     public DateTime? DeletedAt { get; set; }
 }
-
