@@ -61,6 +61,14 @@ jobs:
           token: ${{ secrets.TOKEN }}
           path: .framework
           persist-credentials: false
+      - name: Checkout canonical Objects schema
+        uses: actions/checkout@v4
+        with:
+          repository: ropabajo/docker-kubernetes-configs
+          ref: 9eaf8f19a91a1288b12918caad6e5fc785f1766d
+          token: ${{ secrets.TOKEN }}
+          path: .schema
+          persist-credentials: false
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.402'
@@ -105,6 +113,7 @@ jobs:
             dotnet restore "$framework_root/$project" --configfile "$RUNNER_TEMP/public.config" --disable-parallel
             dotnet pack "$framework_root/$project" --no-restore -c Release -o "$LOCAL_AUTHZ_FEED" -m:2
           done
+          export OBJECTS_SCHEMA_INIT_SQL="$GITHUB_WORKSPACE/.schema/docker-compose/mysql-db-object/db-init/init.sql"
           export FILE_JOBS_TEST_MYSQL='Server=127.0.0.1;Port=13316;User ID=root;SslMode=None'
           objects_api=src/Ropabajo.Church.Sanluis.Objects.Api/Ropabajo.Church.Sanluis.Objects.Api.csproj
           objects_tests=src/Ropabajo.Church.Sanluis.Objects.Api.Tests/Ropabajo.Church.Sanluis.Objects.Api.Tests.csproj

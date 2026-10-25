@@ -10,6 +10,7 @@ using Ropabajo.Church.Sanluis.Objects.Infraestructure.FileJobs.Authentication;
 using Ropabajo.Church.Sanluis.Objects.Infraestructure.FileJobs.Hosting;
 using Ropabajo.Church.Sanluis.Objects.Infraestructure.FileJobs.Persistence;
 using Ropabajo.Church.Sanluis.Objects.Infraestructure.FileJobs.Storage;
+using Ropabajo.Church.Sanluis.Objects.Infraestructure.Persistence;
 
 namespace Ropabajo.Church.Sanluis.Objects.Infraestructure.FileJobs;
 
@@ -45,9 +46,16 @@ public static class FileJobsServiceRegistration
                 || runtime.WorkerClients.Count == 0 || runtime.WorkerClients.Any(client => string.IsNullOrWhiteSpace(client.Key) || client.Value != "church"))
                 throw new InvalidOperationException("FileJobs requires an explicit HTTPS worker authority, audience and allowed client map.");
             var sql = new MySqlConnectionStringBuilder(connection);
-            var requiredDatabase = settings.Environment == "development" ? "db_file_jobs_dev" : "db_file_jobs_prod";
+            var requiredDatabase = settings.Environment == "development" ? "db_object" : "db_file_jobs_prod";
             if (!string.Equals(sql.Database, requiredDatabase, StringComparison.Ordinal) || string.IsNullOrWhiteSpace(sql.UserID) || string.IsNullOrWhiteSpace(sql.Password))
-                throw new InvalidOperationException("ConnectionStrings:FileJobs must use its isolated metadata database and dedicated credentials.");
+                throw new InvalidOperationException("ConnectionStrings:FileJobs must use the configured metadata database and dedicated credentials.");
+            if (settings.Environment == "development")
+            {
+                var applicationSql = new MySqlConnectionStringBuilder(configuration.GetConnectionString("DefaultConnection") ?? string.Empty);
+                if (!LocalDatabaseConfiguration.IsDevelopmentEndpoint(sql) || !string.Equals(applicationSql.Database, sql.Database, StringComparison.Ordinal)
+                    || !string.Equals(applicationSql.Server, sql.Server, StringComparison.OrdinalIgnoreCase) || applicationSql.Port != sql.Port)
+                    throw new InvalidOperationException("FileJobs development requires db_object on the same 3306 endpoint as DefaultConnection, using 161.132.54.155 or its mysql-local alias.");
+            }
             if (string.IsNullOrWhiteSpace(runtime.Broker.HostName) || string.IsNullOrWhiteSpace(runtime.Broker.VirtualHost)
                 || runtime.Broker.Port is < 1 or > 65535 || string.IsNullOrWhiteSpace(runtime.Broker.UserName) || string.IsNullOrWhiteSpace(runtime.Broker.Password)
                 || runtime.Broker.Exchange != settings.Environment + ".file-jobs.v1")

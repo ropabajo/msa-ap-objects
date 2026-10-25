@@ -22,7 +22,7 @@ no se utiliza como sustituto de Local.
 El fuente conserva esta plantilla sin credenciales:
 
 ```text
-server=mysql-objects-shared.church-dev.svc.cluster.local;database=db_object;user=;password=;port=3306;SslMode=None;
+server=mysql-local.church-dev.svc.cluster.local;database=db_object;user=;password=;port=3306;SslMode=None;
 ```
 
 El valor completo de `ConnectionStrings__DefaultConnection` se suministra mediante
@@ -38,7 +38,7 @@ La imagen vacía también User; Kubernetes aporta el usuario real del Secret.
 Database 1 separa claves de DB0, pero no concede permisos ACL ni aísla recursos
 físicos. Los permisos de los prefijos deben estar autorizados en Redis.
 
-MinIo usa Endpoint `minio-api.ropabajo.pe`, TLS y bucket privado `church-dev`. AccessKey/SecretKey provienen de `dev-objects-runtime` y corresponden a la identidad restringida de Objects. Su MySQL es la instancia compartida con producción: el Service 3306 se traduce al puerto externo 3307; la separación del bucket no separa los datos SQL.
+MinIo usa Endpoint `minio-api.ropabajo.pe`, TLS y bucket privado `church-dev`. AccessKey/SecretKey provienen de `dev-objects-runtime` y corresponden a la identidad restringida de Objects. El destino SQL previsto es db_object de desarrollo en 161.132.54.155:3306. El runtime histórico en 3307 no se modifica por cambiar este archivo: comprobar y preparar el Secret antes de desplegar.
 
 Los Secrets compartidos pueden contener claves para otros consumidores. Solo se
 documentan aquí las integraciones utilizadas por este aplicativo; no se agregan
@@ -93,4 +93,16 @@ Las credenciales se inyectan por los Secrets específicos opcionales; no incluye
 públicos. El runtime usa la precedencia habitual: variables de entorno sobre JSON.
 El usuario técnico Rabbit es distinto por servicio. Solo Objects conserva credenciales
 MinIO, y el worker usa una política de subida temporal, sin claves permanentes.
-El nuevo registro exige la base lógica `db_file_jobs_dev`; no permite usar db_object.
+En desarrollo el registro exige `db_object` en el mismo servidor/puerto que
+`DefaultConnection`, mediante `mysql-local:3306` o `161.132.54.155:3306`.
+La cuenta confirmada es `usr_object`; el fuente mantiene usuario y contraseña
+vacíos. Los valores efectivos se inyectan mediante `dev-objects-runtime` y
+`dev-file-jobs-objects`. Si el primero aún apunta a 3307, preparar la transición
+antes de desplegar. El arranque Local rechaza el destino histórico incluso con
+FileJobs apagado y utiliza el dialecto MySQL 5.7.44. Registrar dependencias no
+abre SQL ni ejecuta migraciones.
+
+El CI obtiene el `init.sql` canónico de docker-kubernetes-configs en una revisión
+inmutable y proporciona su ruta con `OBJECTS_SCHEMA_INIT_SQL`. Las pruebas usan
+solo el bloque de tareas dentro de MySQL efímero local. No hay otra copia SQL
+en el MSA ni cambios a cuentas desde estas pruebas.

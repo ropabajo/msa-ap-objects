@@ -14,7 +14,7 @@ public sealed class SqlFileJobStore : IFileJobStore
     private readonly IDbContextFactory<FileJobsDbContext> _factory;
 
     /// <summary>
-    /// Inicializa la fábrica de contextos de la base de metadatos aislada.
+    /// Inicializa la fábrica del contexto independiente de metadatos de archivos.
     /// </summary>
     public SqlFileJobStore(IDbContextFactory<FileJobsDbContext> factory)
     {

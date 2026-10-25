@@ -37,8 +37,20 @@ public sealed class FileJobLifecycleTests : IAsyncLifetime
         if (sql.Server != "127.0.0.1" || sql.Port != 13316) throw new InvalidOperationException("The fixture must be local and isolated.");
         sql.Database = "file_jobs_test_" + Guid.NewGuid().ToString("N");
         _factory = new Factory(new DbContextOptionsBuilder<FileJobsDbContext>().UseMySql(sql.ConnectionString, new MySqlServerVersion(new Version(5, 7, 44))).Options);
-        await using var context = _factory.CreateDbContext(); await context.Database.EnsureCreatedAsync();
-        await File.WriteAllTextAsync("/tmp/file-jobs-schema.sql", context.Database.GenerateCreateScript());
+        await using (var admin = new MySqlConnector.MySqlConnection(connection))
+        {
+            await admin.OpenAsync();
+            await using var command = admin.CreateCommand();
+            command.CommandText = $"CREATE DATABASE `{sql.Database}` CHARACTER SET utf8mb4";
+            await command.ExecuteNonQueryAsync();
+        }
+        await using var context = _factory.CreateDbContext();
+        await using var legacy = new Ropabajo.Church.Sanluis.Objects.Infraestructure.Persistence.DatabaseContext(
+            new DbContextOptionsBuilder<Ropabajo.Church.Sanluis.Objects.Infraestructure.Persistence.DatabaseContext>()
+                .UseMySql(sql.ConnectionString, new MySqlServerVersion(new Version(5, 7, 44))).Options,
+            new Microsoft.AspNetCore.Http.HttpContextAccessor());
+        await ExecuteDdlAsync(context, legacy.Database.GenerateCreateScript());
+        await ExecuteDdlAsync(context, CanonicalTaskSchema());
         _store = new SqlFileJobStore(_factory);
         var mapper = new MapperConfiguration(config => config.AddProfile<FileJobProjectionMappingProfile>(), NullLoggerFactory.Instance).CreateMapper();
         _service = new FileJobService(_store, _files, mapper, Options.Create(_settings), _clock);
@@ -55,13 +67,74 @@ public sealed class FileJobLifecycleTests : IAsyncLifetime
     }
 
     [Fact]
-    public void Reviewed_schema_matches_the_model_and_selects_only_the_isolated_database()
+    public void Canonical_task_schema_preserves_the_legacy_tables_and_uses_spanish_names()
     {
-        var migration = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../operations/file-jobs/001_metadata_dev.sql"));
-        using var context = _factory.CreateDbContext(); var script = File.ReadAllText(migration).Replace("\r\n", "\n");
-        Assert.Contains("USE `db_file_jobs_dev`;", script);
-        Assert.EndsWith(context.Database.GenerateCreateScript().Replace("\r\n", "\n").TrimEnd(), script.TrimEnd());
-        Assert.DoesNotContain("USE `db_object`", script);
+        var script = CanonicalTaskSchema();
+        Assert.Contains("USE `db_object`;", script);
+        Assert.DoesNotContain("ALTER DATABASE", script);
+        Assert.DoesNotContain("DROP TABLE", script);
+        Assert.DoesNotContain("CREATE USER", script);
+        Assert.DoesNotContain("CREATE TABLE IF NOT EXISTS `objeto`", script);
+        using var context = _factory.CreateDbContext();
+        Assert.Equal(6, context.Model.GetEntityTypes().Count());
+        foreach (var entity in context.Model.GetEntityTypes())
+        {
+            var table = entity.GetTableName()!;
+            Assert.StartsWith("tarea_archivo", table);
+            Assert.Contains($"CREATE TABLE IF NOT EXISTS `{table}`", script);
+            var identifier = Microsoft.EntityFrameworkCore.Metadata.StoreObjectIdentifier.Table(table, null);
+            foreach (var property in entity.GetProperties())
+            {
+                var column = property.GetColumnName(identifier)!;
+                Assert.Matches("^[A-Z][A-Z0-9_]*$", column);
+                Assert.Contains($"`{column}`", script);
+            }
+            var key = Assert.Single(entity.FindPrimaryKey()!.Properties);
+            Assert.Equal(typeof(long), key.ClrType);
+            Assert.StartsWith("ID_", key.GetColumnName(identifier));
+        }
+    }
+
+    [Fact]
+    public async Task Repeating_the_canonical_task_schema_keeps_existing_objects_and_all_twelve_tables()
+    {
+        await using var context = _factory.CreateDbContext();
+        await context.Database.ExecuteSqlRawAsync("""
+            INSERT INTO objeto (ID_OBJETO, CODIGO_OBJETO, NOMBRE_OBJETO, NOMBRE_ARCHIVO,
+              RUTA, EXTENSIONES_PERMITIDAS, LONGITUD_MAXIMA, EXPIRACION, FECHA,
+              CODIGO_ESTADO, USUARIO, USUARIO_CREACION, FECHA_CREACION, IP_CREACION, ELIMINADO)
+            VALUES (1, '00000000-0000-0000-0000-000000000001', 'documento', 'conservar.xlsx',
+              'prueba', '.xlsx', 100, 1, UTC_TIMESTAMP(), 'prueba', 'prueba', 'prueba', UTC_TIMESTAMP(), '127.0.0.1', 0)
+            """);
+        await ExecuteDdlAsync(context, CanonicalTaskSchema());
+        await ExecuteDdlAsync(context, CanonicalTaskSchema());
+        Assert.True((await Create()).IsSuccess);
+        var names = await context.Database.SqlQueryRaw<string>("SELECT NOMBRE_ARCHIVO AS Value FROM objeto").ToListAsync();
+        Assert.Equal("conservar.xlsx", Assert.Single(names));
+        var count = await context.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM information_schema.tables WHERE table_schema = DATABASE()").SingleAsync();
+        Assert.Equal(12, count);
+    }
+
+    private static string CanonicalTaskSchema()
+    {
+        var path = Environment.GetEnvironmentVariable("OBJECTS_SCHEMA_INIT_SQL")
+            ?? Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../../docker-kubernetes-configs/docker-compose/mysql-db-object/db-init/init.sql"));
+        var script = File.ReadAllText(path).Replace("\r\n", "\n");
+        const string begin = "-- BEGIN NAZA OBJECTS: tareas de archivos v1 (2026-10-25)";
+        const string end = "-- END NAZA OBJECTS: tareas de archivos v1";
+        Assert.Equal(2, script.Split(begin).Length);
+        Assert.Equal(2, script.Split(end).Length);
+        var start = script.IndexOf(begin, StringComparison.Ordinal);
+        var stop = script.IndexOf(end, start, StringComparison.Ordinal);
+        return script[start..stop];
+    }
+
+    private static async Task ExecuteDdlAsync(FileJobsDbContext context, string script)
+    {
+        var lines = script.Split('\n').Where(line => !line.TrimStart().StartsWith("--")
+            && !line.StartsWith("ALTER DATABASE") && !line.StartsWith("USE "));
+        foreach (var statement in string.Join('\n', lines).Split(';', StringSplitOptions.RemoveEmptyEntries))
+            if (!string.IsNullOrWhiteSpace(statement)) await context.Database.ExecuteSqlRawAsync(statement);
     }
 
     [Fact]
@@ -198,7 +271,8 @@ public sealed class FileJobLifecycleTests : IAsyncLifetime
         builder.Services.AddAuthentication(); builder.Services.AddAuthorization(options => options.AddPolicy("ActiveChurchRoute", policy => policy.RequireAssertion(_ => true)));
         var actor = new Actor(_owner); builder.Services.AddSingleton<IFileJobActor>(actor); builder.Services.AddSingleton(_service);
         var assembly = typeof(FileJobService).Assembly;
-        builder.Services.AddAutoMapper(config => {
+        builder.Services.AddAutoMapper(config =>
+        {
             config.AddProfile<FileJobProjectionMappingProfile>();
             foreach (var type in assembly.GetTypes().Where(type => type.IsSubclassOf(typeof(Profile)) && type.Namespace?.Contains(".Features.FileJobs.") == true)) config.AddProfile(type);
         });

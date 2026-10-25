@@ -4,7 +4,7 @@ using Ropabajo.Church.Sanluis.Objects.Application.FileJobs.Models;
 namespace Ropabajo.Church.Sanluis.Objects.Infraestructure.FileJobs.Persistence;
 
 /// <summary>
-/// Contexto exclusivo de metadatos de archivos, separado de la base db_object compartida.
+/// Contexto independiente de tareas de archivos; en desarrollo utiliza db_object en el servidor DEV.
 /// </summary>
 public sealed class FileJobsDbContext : DbContext
 {
@@ -49,39 +49,49 @@ public sealed class FileJobsDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var jobs = modelBuilder.Entity<FileJob>();
-        jobs.ToTable("file_jobs"); jobs.HasKey(value => value.Sequence); jobs.Property(value => value.Sequence).ValueGeneratedOnAdd();
-        jobs.HasAlternateKey(value => value.JobId); jobs.Property(value => value.JobId).HasConversion<string>().HasMaxLength(36);
+        jobs.HasKey(value => value.Sequence).HasName("PK_TAREA_ARCHIVO"); jobs.Property(value => value.Sequence).ValueGeneratedOnAdd();
+        jobs.HasAlternateKey(value => value.JobId).HasName("CODIGO_TAREA_ARCHIVO_UNIQUE"); jobs.Property(value => value.JobId).HasConversion<string>().HasMaxLength(36);
         jobs.Property(value => value.Environment).HasMaxLength(32).IsRequired(); jobs.Property(value => value.ChurchCode).HasConversion<string>().HasMaxLength(36);
         jobs.Property(value => value.OwnerHash).HasMaxLength(64).IsRequired(); jobs.Property(value => value.ReportType).HasMaxLength(100).IsRequired();
         jobs.Property(value => value.Producer).HasMaxLength(64).IsRequired(); jobs.Property(value => value.Fingerprint).HasMaxLength(64).IsRequired();
         jobs.Property(value => value.ParametersJson).HasColumnType("longtext").IsRequired(); jobs.Property(value => value.Status).HasMaxLength(32).IsRequired();
         jobs.Property(value => value.FailureCode).HasMaxLength(100); jobs.Property(value => value.LeaseHash).HasMaxLength(64);
         jobs.Property(value => value.AttemptId).HasConversion<string>().HasMaxLength(36); jobs.Property(value => value.Version).IsConcurrencyToken();
-        jobs.HasIndex(value => new { value.Environment, value.ChurchCode, value.OwnerHash, value.Sequence });
-        jobs.HasIndex(value => new { value.Environment, value.Status, value.LeaseUntil });
+        jobs.HasIndex(value => new { value.Environment, value.ChurchCode, value.OwnerHash, value.Sequence }).HasDatabaseName("IDX_TAREA_ARCHIVO_AMBITO");
+        jobs.HasIndex(value => new { value.Environment, value.Status, value.LeaseUntil }).HasDatabaseName("IDX_TAREA_ARCHIVO_ESTADO_PERMISO");
         var artifacts = modelBuilder.Entity<FileJobArtifact>();
-        artifacts.ToTable("file_job_artifacts"); artifacts.HasKey(value => value.ArtifactId);
+        artifacts.HasKey(value => value.Id).HasName("PK_TAREA_ARCHIVO_RESULTADO");
+        artifacts.Property(value => value.Id).ValueGeneratedOnAdd();
+        artifacts.HasAlternateKey(value => value.ArtifactId).HasName("CODIGO_ARCHIVO_UNIQUE");
         artifacts.Property(value => value.ArtifactId).HasConversion<string>().HasMaxLength(36).ValueGeneratedNever();
         artifacts.Property(value => value.JobId).HasConversion<string>().HasMaxLength(36);
         artifacts.Property(value => value.AttemptId).HasConversion<string>().HasMaxLength(36);
         artifacts.Property(value => value.Name).HasMaxLength(50).IsRequired(); artifacts.Property(value => value.FileName).HasMaxLength(200).IsRequired();
         artifacts.Property(value => value.StorageKey).HasMaxLength(500).IsRequired(); artifacts.Property(value => value.ContentType).HasMaxLength(150).IsRequired();
-        artifacts.Property(value => value.Sha256).HasMaxLength(64).IsRequired(); artifacts.HasIndex(value => new { value.JobId, value.AttemptId, value.Name }).IsUnique();
-        artifacts.HasOne<FileJob>().WithMany(value => value.Artifacts).HasForeignKey(value => value.JobId).HasPrincipalKey(value => value.JobId).OnDelete(DeleteBehavior.Cascade);
+        artifacts.Property(value => value.Sha256).HasMaxLength(64).IsRequired(); artifacts.HasIndex(value => new { value.JobId, value.AttemptId, value.Name }).IsUnique().HasDatabaseName("RESULTADO_ARCHIVO_INTENTO_NOMBRE_UNIQUE");
+        artifacts.HasOne<FileJob>().WithMany(value => value.Artifacts).HasForeignKey(value => value.JobId).HasPrincipalKey(value => value.JobId).OnDelete(DeleteBehavior.Cascade).HasConstraintName("FK_RESULTADO_ARCHIVO_TAREA");
         var intents = modelBuilder.Entity<FileJobIntent>();
-        intents.ToTable("file_job_intents"); intents.HasKey(value => new { value.Scope, value.RequestId });
+        intents.HasKey(value => value.Id).HasName("PK_TAREA_ARCHIVO_SOLICITUD");
+        intents.Property(value => value.Id).ValueGeneratedOnAdd();
+        intents.HasIndex(value => new { value.Scope, value.RequestId }).IsUnique().HasDatabaseName("SOLICITUD_ARCHIVO_AMBITO_UNIQUE");
         intents.Property(value => value.Scope).HasMaxLength(64); intents.Property(value => value.RequestId).HasConversion<string>().HasMaxLength(36);
         intents.Property(value => value.JobId).HasConversion<string>().HasMaxLength(36); intents.Property(value => value.Fingerprint).HasMaxLength(64).IsRequired();
-        var slots = modelBuilder.Entity<FileJobSlot>(); slots.ToTable("file_job_slots"); slots.HasKey(value => value.Fingerprint);
+        var slots = modelBuilder.Entity<FileJobSlot>(); slots.HasKey(value => value.Id).HasName("PK_TAREA_ARCHIVO_REUTILIZACION");
+        slots.Property(value => value.Id).ValueGeneratedOnAdd();
+        slots.HasIndex(value => value.Fingerprint).IsUnique().HasDatabaseName("REUTILIZACION_ARCHIVO_HUELLA_UNIQUE");
         slots.Property(value => value.Fingerprint).HasMaxLength(64); slots.Property(value => value.JobId).HasConversion<string>().HasMaxLength(36);
         slots.Property(value => value.Version).IsConcurrencyToken();
-        var outbox = modelBuilder.Entity<FileJobOutbox>(); outbox.ToTable("file_job_outbox"); outbox.HasKey(value => value.MessageId);
+        var outbox = modelBuilder.Entity<FileJobOutbox>(); outbox.HasKey(value => value.Id).HasName("PK_TAREA_ARCHIVO_MENSAJE");
+        outbox.Property(value => value.Id).ValueGeneratedOnAdd();
+        outbox.HasIndex(value => value.MessageId).IsUnique().HasDatabaseName("CODIGO_MENSAJE_UNIQUE");
         outbox.Property(value => value.MessageId).HasConversion<string>().HasMaxLength(36); outbox.Property(value => value.JobId).HasConversion<string>().HasMaxLength(36);
         outbox.Property(value => value.Payload).HasColumnType("longtext").IsRequired(); outbox.Property(value => value.DispatchId).HasConversion<string>().HasMaxLength(36);
-        outbox.Property(value => value.Version).IsConcurrencyToken(); outbox.HasIndex(value => new { value.PublishedAt, value.AvailableAt, value.DispatchUntil });
-        var audit = modelBuilder.Entity<FileJobAudit>(); audit.ToTable("file_job_audit"); audit.HasKey(value => value.AuditId);
+        outbox.Property(value => value.Version).IsConcurrencyToken(); outbox.HasIndex(value => new { value.PublishedAt, value.AvailableAt, value.DispatchUntil }).HasDatabaseName("IDX_MENSAJE_ARCHIVO_DESPACHO");
+        var audit = modelBuilder.Entity<FileJobAudit>(); audit.HasKey(value => value.Id).HasName("PK_TAREA_ARCHIVO_AUDITORIA");
+        audit.Property(value => value.Id).ValueGeneratedOnAdd();
+        audit.HasIndex(value => value.AuditId).IsUnique().HasDatabaseName("CODIGO_AUDITORIA_UNIQUE");
         audit.Property(value => value.AuditId).HasConversion<string>().HasMaxLength(36); audit.Property(value => value.JobId).HasConversion<string>().HasMaxLength(36);
         audit.Property(value => value.AttemptId).HasConversion<string>().HasMaxLength(36); audit.Property(value => value.Status).HasMaxLength(32).IsRequired();
-        audit.Property(value => value.Code).HasMaxLength(100); audit.HasIndex(value => new { value.JobId, value.OccurredAt });
+        audit.Property(value => value.Code).HasMaxLength(100); audit.HasIndex(value => new { value.JobId, value.OccurredAt }).HasDatabaseName("IDX_AUDITORIA_ARCHIVO_TAREA_FECHA");
     }
 }
