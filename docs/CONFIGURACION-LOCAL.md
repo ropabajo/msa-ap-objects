@@ -154,7 +154,17 @@ y su audiencia, que autorizan HTTP y no constituyen otra conexión Rabbit.
 
 Las imágenes se derivan del fuente; no se recrean Broker anidados durante el
 saneamiento. Los workflows de verificación prueban las clases reales contra las
-definiciones canónicas en RabbitMQ/MySQL efímeros. No despliegan ni activan flags.
+definiciones canónicas en RabbitMQ/MySQL efímeros. Publican candidatos con los
+flags del fuente y omiten el despliegue SSH en publish_only.
+
+El 26/10/2026 se desplegó el candidato de fuente 372b763 como codex-dev, con
+FileJobs activo. La configuración sanitizada incluida en el Pod coincide con la
+derivada del fuente. El backend completó un XLSX sintético de ocho columnas sin
+filas personales mediante RabbitMQ, worker con JWT técnico y MinIO; se verificaron
+descarga y aislamiento de propietario/iglesia en el servicio y se retiró la prueba.
+La API de usuario rechazó el token técnico y la petición anónima (401). El login
+y flujo completo de una persona en navegador continúan pendientes. Digests,
+respaldos y evidencias están en la guía operativa FileJobs DEV enlazada arriba.
 
 Program.cs conserva 26 líneas; ApiServiceRegistration compone filtros y JWT técnico,
 y Infrastructure registra FileJobs. El Secret dev-file-jobs-objects conserva solo
