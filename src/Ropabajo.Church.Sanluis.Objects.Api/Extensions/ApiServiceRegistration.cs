@@ -19,8 +19,6 @@ public static class ApiServiceRegistration
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
-        services.AddScoped<TemporaryExportRequestLimitFilter>();
-        services.AddScoped<TemporaryExportExceptionFilter>();
         services.AddScoped<FileJobExceptionFilter>();
         var runtime = configuration.GetSection("FileJobs").Get<FileJobsRuntimeSettings>() ?? new FileJobsRuntimeSettings();
         services.AddServiceAccountAuthentication("FileJobsWorker", configuration["Keycloak:Authority"] ?? string.Empty,

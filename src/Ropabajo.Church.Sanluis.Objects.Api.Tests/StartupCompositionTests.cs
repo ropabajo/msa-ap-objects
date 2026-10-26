@@ -19,7 +19,7 @@ public sealed class StartupCompositionTests
         {
             ["ConnectionStrings:DefaultConnection"] = "server=mysql-local.church-dev.svc.cluster.local;port=3306;database=db_object;user=fixture;password=local-test-only",
             ["RabbitMq:HostName"] = "legacy-broker", ["RabbitMq:Port"] = "5672", ["RabbitMq:VirtualHost"] = "legacy",
-            ["FileJobs:Enabled"] = "false", ["TemporaryExports:Enabled"] = "false"
+            ["FileJobs:Enabled"] = "false"
         }).Build();
         var services = new ServiceCollection(); services.AddLogging(); services.AddSingleton<IConfiguration>(configuration);
         services.AddApplication(); services.AddInfrastructure(configuration, "Local"); services.AddObjectsApi(configuration);

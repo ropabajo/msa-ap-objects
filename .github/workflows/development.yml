@@ -130,7 +130,6 @@ jobs:
             Logging:.Logging,
             AllowedHosts:.AllowedHosts,
             Base:.Base,
-            TemporaryExports:.TemporaryExports,
             FileJobs:.FileJobs,
             spring:.spring,
             Keycloak:(.Keycloak | {Authority,Audience,AuthorizedParty,RoleClient,Enabled,RequireHttpsMetadata}),

@@ -293,6 +293,12 @@ public sealed class FileJobLifecycleTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsJsonAsync(path, new { requestId = Guid.NewGuid(), reportType = "members.excel", parameters = new { } })).StatusCode);
         actor.Owner = _owner;
         var canceled = await client.PostAsJsonAsync(path + $"/{id:D}/cancel", new { }); Assert.Equal(HttpStatusCode.OK, canceled.StatusCode); Assert.Contains("canceled", await canceled.Content.ReadAsStringAsync());
+        // El mismo host publica FileJobs y ya no admite el protocolo previo de filas JSON.
+        var retired = $"/v1/church/{_owner.ChurchCode:D}/exports";
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync(retired, new { })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsJsonAsync(retired + $"/{id:D}/source", new { })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync(retired + $"/{id:D}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync(retired + $"/{id:D}/download", new { })).StatusCode);
     }
 
     private sealed class Actor(FileJobRequester owner) : IFileJobActor

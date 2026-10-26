@@ -12,7 +12,7 @@ no se utiliza como sustituto de Local.
 | `RabbitMq` | `rabbitmq-shared.church-dev.svc.cluster.local:5672`, VirtualHost `local-vhost`, UseSsl `false`; usuario y contraseña mediante Secret compartido |
 | `Keycloak` | Authority `https://auth-dev.idnsanluis.org/realms/church`, Audience `account`, AuthorizedParty/RoleClient `web-ap-container`, Enabled y RequireHttpsMetadata `true` |
 | `MinIo` | `minio-api.ropabajo.pe`, UseSsl `true`, BucketName `church-dev`; claves vacías en el fuente |
-| `TemporaryExports` | Enabled=true, RetentionHours=24, ReuseSeconds=300, LinkSeconds=900, InputTimeoutSeconds=120, PollSeconds=5, BatchSize=25, MaxAttempts=3, MaxRows=10000, MaxColumns=40 y MaxSourceBytes=10485760 |
+| `FileJobs` | Enabled=false; registro durable, retención y límites del único flujo de generación |
 | `Base.Path` | Cadena vacía: Nginx retira el prefijo público al enviar a la API |
 | `spring.cloud.config.enabled` | `false`: configuración Local sin servidor Spring Config |
 | `Logging` / `AllowedHosts` | Default `Warning`, Microsoft.Hosting.Lifetime `Information`; AllowedHosts `*`, como los defaults previos de la imagen |
@@ -82,6 +82,12 @@ El informe general está en
 
 
 ## Trabajos de archivos (piloto)
+
+Se retiraron TemporaryExports, sus endpoints de filas JSON, coordinador, worker y
+generador ClosedXML. El único protocolo de generación es FileJobs; Church genera
+el XLSX por páginas y lo sube directamente con una autorización temporal. Las
+rutas genéricas conservan bloqueado temporary-exports/ para no abrir el acceso a
+posibles artefactos anteriores. Este cambio de fuente no borra archivos ni tablas.
 
 Las opciones nuevas están versionadas en `appsettings.Local.json` y se incorporan
 al contexto sanitizado de la imagen desde ese mismo archivo. Permanecen desactivadas
