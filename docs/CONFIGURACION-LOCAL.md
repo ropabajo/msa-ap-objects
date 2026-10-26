@@ -130,7 +130,11 @@ El piloto reutiliza nc.objects.exchange, de tipo direct, dentro de local-vhost:
 
 La cola específica evita competir con los eventos de personas de nc.churches.queue.
 No se añaden exchanges ni cuentas Rabbit por feature. Los permisos se verifican
-sobre la cuenta DEV que ya utiliza el microservicio. No se aplicó al broker activo.
+sobre la cuenta DEV que ya utiliza el microservicio. La preparación posterior
+instaló las tres colas/bindings en local-vhost con recuperación previa verificada.
+FileJobs sigue apagado. dev-file-jobs-objects ya conserva solo la conexión 3306
+aprobada; falta el cliente técnico de Keycloak y el despliegue coordinado. Estado:
+[FileJobs DEV](https://github.com/ropabajo/k8s-recipes/blob/codex/file-generation-standard/environments/church-dev/FILE-JOBS.md).
 
 El código fija ap-framework 87e1598: RabbitMq 1.1.0-dev.2, Files 1.0.0-dev.4 y
 Authz 1.1.4-dev.2. AddRabbitMq descubre los productores de IProducer<T> y comparte
