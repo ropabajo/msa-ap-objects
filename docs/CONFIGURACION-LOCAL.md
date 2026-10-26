@@ -12,7 +12,7 @@ no se utiliza como sustituto de Local.
 | `RabbitMq` | `rabbitmq-shared.church-dev.svc.cluster.local:5672`, VirtualHost `local-vhost`, UseSsl `false`; usuario y contraseña mediante Secret compartido |
 | `Keycloak` | Authority `https://auth-dev.idnsanluis.org/realms/church`, Audience `account`, AuthorizedParty/RoleClient `web-ap-container`, Enabled y RequireHttpsMetadata `true` |
 | `MinIo` | `minio-api.ropabajo.pe`, UseSsl `true`, BucketName `church-dev`; claves vacías en el fuente |
-| `FileJobs` | Enabled=false; registro durable, retención y límites del único flujo de generación |
+| `FileJobs` | Enabled=true en la revisión de activación DEV; registro durable, retención y límites del único flujo de generación |
 | `Base.Path` | Cadena vacía: Nginx retira el prefijo público al enviar a la API |
 | `spring.cloud.config.enabled` | `false`: configuración Local sin servidor Spring Config |
 | `Logging` / `AllowedHosts` | Default `Warning`, Microsoft.Hosting.Lifetime `Information`; AllowedHosts `*`, como los defaults previos de la imagen |
@@ -90,8 +90,9 @@ rutas genéricas conservan bloqueado temporary-exports/ para no abrir el acceso 
 posibles artefactos anteriores. Este cambio de fuente no borra archivos ni tablas.
 
 Las opciones nuevas están versionadas en `appsettings.Local.json` y se incorporan
-al contexto sanitizado de la imagen desde ese mismo archivo. Permanecen desactivadas
-hasta preparar la infraestructura. Producción no cambia. Ver el procedimiento
+al contexto sanitizado de la imagen desde ese mismo archivo. La revisión de
+activación habilita FileJobs en Local después de preparar las dependencias y el
+respaldo recuperado. Producción no cambia. Ver el procedimiento
 canónico en [docs/naza/backend/piloto-archivos.md](https://github.com/church-ropabajo/docs/blob/main/naza/backend/piloto-archivos.md).
 
 Objects consume `FileJobs` y `ConnectionStrings:FileJobs`; Church consume `FileWorker`.
@@ -132,8 +133,12 @@ La cola específica evita competir con los eventos de personas de nc.churches.qu
 No se añaden exchanges ni cuentas Rabbit por feature. Los permisos se verifican
 sobre la cuenta DEV que ya utiliza el microservicio. La preparación posterior
 instaló las tres colas/bindings en local-vhost con recuperación previa verificada.
-FileJobs sigue apagado. dev-file-jobs-objects ya conserva solo la conexión 3306
-aprobada; falta el cliente técnico de Keycloak y el despliegue coordinado. Estado:
+La revisión de activación pone FileJobs.Enabled=true en el fuente y en la imagen
+sanitizada. Ambos Secrets están preparados y el token técnico DEV fue verificado.
+El pipeline de verificación reutiliza el workflow Local en modo publish_only:
+publica un digest tras las pruebas y omite el job SSH. La activación coordinada
+usa el operador YAML común desde codex-dev; no requiere copiar su clave administrativa.
+dev-file-jobs-objects conserva solo la conexión 3306 aprobada. Estado operativo:
 [FileJobs DEV](https://github.com/ropabajo/k8s-recipes/blob/codex/file-generation-standard/environments/church-dev/FILE-JOBS.md).
 
 El código fija ap-framework 87e1598: RabbitMq 1.1.0-dev.2, Files 1.0.0-dev.4 y

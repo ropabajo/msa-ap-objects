@@ -1,4 +1,4 @@
-name: File jobs - verify source without deployment
+name: File jobs - verify and publish DEV candidate
 on:
   push:
     branches: [codex/dev-member-export-minio]
@@ -25,7 +25,7 @@ jobs:
           RABBITMQ_DEFAULT_PASS: local-fixture-only
           RABBITMQ_DEFAULT_VHOST: local-vhost
         ports: ['13372:5672']
-        options: --health-cmd "rabbitmq-diagnostics -q ping" --health-interval 5s --health-timeout 10s --health-retries 20
+        options: --health-cmd "rabbitmq-diagnostics -q check_running" --health-interval 5s --health-timeout 10s --health-retries 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -89,3 +89,11 @@ jobs:
           name: file-jobs-tests-${{ github.sha }}
           path: test-results/
           if-no-files-found: ignore
+
+  publish-dev-candidate:
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/codex/dev-member-export-minio'
+    uses: ./.github/workflows/development.yml
+    with:
+      publish_only: true
+    secrets: inherit
