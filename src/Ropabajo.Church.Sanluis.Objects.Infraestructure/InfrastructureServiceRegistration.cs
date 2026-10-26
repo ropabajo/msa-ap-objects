@@ -9,19 +9,24 @@ using System.Reflection;
 
 namespace Ropabajo.Church.Sanluis.Objects.Infraestructure;
 
+/// <summary>Registra la persistencia y las integraciones de Objects.</summary>
 public static class InfrastructureServiceRegistration
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services)
+    /// <summary>Selecciona el dialecto SQL del ambiente sin abrir conexiones.</summary>
+    /// <param name="services">Colección de servicios del aplicativo.</param>
+    /// <param name="configuration">Configuración efectiva, con credenciales inyectadas.</param>
+    /// <param name="environmentName">Ambiente ASP.NET Core; Local utiliza MySQL 5.7.44.</param>
+    /// <returns>Colección con las dependencias de infraestructura registradas.</returns>
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration, string environmentName)
     {
-        IConfiguration configuration;
-        using (var serviceProvider = services.BuildServiceProvider())
-        {
-            configuration = serviceProvider.GetService<IConfiguration>();
-        }
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
+        var serverVersion = string.Equals(environmentName, "Local", StringComparison.OrdinalIgnoreCase)
+            ? new Version(5, 7, 44) : new Version(8, 0, 21);
 
         services.AddDbContext<DatabaseContext>(options =>
          options.UseMySql(configuration.GetConnectionString("DefaultConnection"),
-             new MySqlServerVersion(new Version(8, 0, 21))));
+             new MySqlServerVersion(serverVersion)));
 
         services.AddRabbitMq(Assembly.GetExecutingAssembly());
 

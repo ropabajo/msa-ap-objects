@@ -98,6 +98,10 @@ contra sus recetas fijadas y los settings sanitizados por sus workflows reales.
 Objects conserva el pin b8f02b2; este ajuste no cambia CI ni settings productivos.
 Las 54 columnas mapeadas por sus seis entidades legacy existen en db_object DEV.
 
-Este cambio ajusta únicamente el destino SQL Local y su documentación. La rama
+El registro de persistencia usa el dialecto MySQL 5.7.44 en Local, que coincide
+con el servidor DEV comprobado, y conserva 8.0.21 para los demás ambientes.
+La configuración y el ambiente se reciben directamente desde el host.
+
+Este cambio ajusta el destino y el dialecto SQL Local y su documentación. La rama
 del piloto de archivos permanece separada; no incorpora sus casos de uso,
 workers, opciones o nuevos endpoints al despliegue base.
