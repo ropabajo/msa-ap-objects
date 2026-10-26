@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Ropabajo.Church.Sanluis.Objects.Infraestructure.FileJobs;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Ropabajo.Churc.Sanluis.Framework.RabbitMq;
@@ -34,6 +35,7 @@ public static class InfrastructureServiceRegistration
              new MySqlServerVersion(serverVersion)));
 
         services.AddRabbitMq(Assembly.GetExecutingAssembly());
+        services.AddFileJobs(configuration);
 
         services.AddScoped(typeof(IBaseRepository<>), typeof(RepositoryBase<>));
         services.AddScoped<IObjectRepository, ObjectRepository>();

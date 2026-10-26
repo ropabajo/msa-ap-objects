@@ -20,3 +20,12 @@
 - Casos separados en Commands/Queries; DTOs propios, MappingProfile, validator, documentación XML completa y CancellationToken.
 - Los casos nuevos utilizan Result de ap-framework. Conservar contratos legacy y evitar dos canales de error en el caso migrado.
 - No ampliar por arrastre el alcance a otros casos ni modificar producción al implementar Local.
+
+## RabbitMQ y Program.cs
+
+- Mensajería nueva sigue la sección 13 de los lineamientos canónicos de Naza:
+  IProducer<T>, productor concreto en Infrastructure y transporte confirmado del framework.
+- No duplicar canales, ACK, retry o reconexión en el MSA. Mantener identidades de
+  conexión separadas y fijar una revisión inmutable del framework en CI.
+- Program.cs compone capas y middleware; filtros/registros propios van en su capa,
+  y el comportamiento reutilizable de autenticación o AMQP en Authz/RabbitMq.

@@ -106,3 +106,24 @@ El CI obtiene el `init.sql` canónico de docker-kubernetes-configs en una revisi
 inmutable y proporciona su ruta con `OBJECTS_SCHEMA_INIT_SQL`. Las pruebas usan
 solo el bloque de tareas dentro de MySQL efímero local. No hay otra copia SQL
 en el MSA ni cambios a cuentas desde estas pruebas.
+
+## Patrón RabbitMQ compartido
+
+La rama del piloto fija ap-framework 264a9e5: RabbitMq 1.1.0-dev.1,
+Files 1.0.0-dev.2 y Authz 1.1.4-dev.2. Files adapta el protocolo existente al
+transporte común de RabbitMq, con confirms, persistencia, mandatory, prefetch uno,
+ACK manual y retry diferido. Se conservan los perfiles de conexión y credenciales
+separados; no se reemplaza la identidad del bus legacy ni cambia el JSON público.
+
+El patrón para desarrollos nuevos está en los lineamientos canónicos de Naza y
+[ap-framework/docs/RABBITMQ.md](https://github.com/robertpablo/ap-framework/blob/264a9e5b2814b53bf8e0cbf4460918a2f8232d35/docs/RABBITMQ.md).
+La auditoría común de los ocho MSA pasó con Church/Objects fijados a recetas
+9fae3db. Los workflows de verificación de estas ramas compilan y prueban contra
+MySQL efímero; no publican imágenes ni despliegan. Esta adopción no habilita flags.
+
+Objects declara FileJobProducer en Infrastructure, lo registra con
+AddRabbitMqProducer y el dispatcher depende de IProducer<GenerateFileCommand>.
+AddObjectsApi registra filtros y llama al JWT técnico común de Authz;
+AddInfrastructure incorpora AddFileJobs. Program.cs conserva 26 líneas de
+composición y middleware. El arranque desactivado se prueba sin red y verifica
+un único productor y un único dispatcher.

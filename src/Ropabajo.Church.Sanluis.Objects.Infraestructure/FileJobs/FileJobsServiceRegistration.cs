@@ -3,7 +3,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using MySqlConnector;
-using Ropabajo.Churc.Sanluis.Framework.Files.Messaging;
+using Ropabajo.Churc.Sanluis.Framework.Files.Contracts;
+using Ropabajo.Churc.Sanluis.Framework.RabbitMq;
+using Ropabajo.Church.Sanluis.Objects.Infraestructure.Producers.FileJobs;
 using Ropabajo.Church.Sanluis.Objects.Application.FileJobs;
 using Ropabajo.Church.Sanluis.Objects.Application.FileJobs.Contracts;
 using Ropabajo.Church.Sanluis.Objects.Infraestructure.FileJobs.Authentication;
@@ -69,7 +71,7 @@ public static class FileJobsServiceRegistration
         services.AddScoped<IFileJobActor, HttpFileJobActor>();
         services.AddSingleton<IFileArtifactStore, MinioFileArtifactStore>();
         services.AddScoped<FileJobService>();
-        services.AddSingleton<IFileCommandPublisher>(_ => new ConfirmedFilePublisher(runtime.Broker.CreateFactory("objects-file-jobs"), runtime.Broker.Exchange));
+        services.AddRabbitMqProducer<GenerateFileCommand, FileJobProducer>(section.GetSection("Broker"));
         services.AddHostedService<FileJobsDispatcher>();
         return services;
     }

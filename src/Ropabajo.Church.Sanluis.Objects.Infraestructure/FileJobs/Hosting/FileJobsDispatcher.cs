@@ -4,6 +4,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Ropabajo.Churc.Sanluis.Framework.Files.Messaging;
+using Ropabajo.Churc.Sanluis.Framework.Files.Contracts;
+using Ropabajo.Churc.Sanluis.Framework.RabbitMq;
 using Ropabajo.Church.Sanluis.Objects.Application.FileJobs;
 using Ropabajo.Church.Sanluis.Objects.Application.FileJobs.Contracts;
 
@@ -17,7 +19,7 @@ public sealed class FileJobsDispatcher : BackgroundService
     private readonly IServiceScopeFactory _scopes;
     private readonly FileJobsSettings _settings;
     private readonly ILogger<FileJobsDispatcher> _logger;
-    private readonly IFileCommandPublisher _publisher;
+    private readonly IProducer<GenerateFileCommand> _publisher;
     private readonly TimeProvider _clock;
     private readonly Guid _dispatcherId = Guid.NewGuid();
 
@@ -25,7 +27,7 @@ public sealed class FileJobsDispatcher : BackgroundService
     /// Inicializa el dispatcher sin abrir conexiones en el constructor.
     /// </summary>
     public FileJobsDispatcher(IServiceScopeFactory scopes, IOptions<FileJobsSettings> settings,
-        ILogger<FileJobsDispatcher> logger, IFileCommandPublisher publisher, TimeProvider clock)
+        ILogger<FileJobsDispatcher> logger, IProducer<GenerateFileCommand> publisher, TimeProvider clock)
     {
         _scopes = scopes ?? throw new ArgumentNullException(nameof(scopes));
         _settings = (settings ?? throw new ArgumentNullException(nameof(settings))).Value;
@@ -62,7 +64,7 @@ public sealed class FileJobsDispatcher : BackgroundService
                         var command = GenerateFileCommandCodec.Decode(Encoding.UTF8.GetBytes(message.Payload));
                         if (command.Environment != _settings.Environment || command.JobId != message.JobId || command.MessageId != message.MessageId)
                             throw new InvalidDataException("Outbox command scope is inconsistent.");
-                        await _publisher.PublishAsync(command, stoppingToken);
+                        await _publisher.Publish(command, stoppingToken);
                         await service.ConfirmDispatchAsync(messageId, _dispatcherId, stoppingToken);
                     }
                     catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { return; }
