@@ -46,3 +46,17 @@ borra archivos, cambia permisos de almacenamiento ni ejecuta limpieza sobre DEV.
 Activación, respaldos y comprobaciones pendientes:
 [guía del piloto](https://github.com/church-ropabajo/docs/blob/codex/result-file-jobs/naza/backend/piloto-archivos.md).
 Este cambio está preparado en la rama; no activa FileJobs ni modifica el runtime.
+
+## Contrato de subida firmado
+
+El permiso devuelve explícitamente `Fields["Content-Type"]` con el MIME reservado.
+MinIO SDK 7 incluye esa condición en la política, pero omite el campo del formulario;
+el worker necesita ambos para la subida multipart. La prueba de contrato ejercita
+el generador de permisos y el cliente real del worker contra un receptor HTTP local
+que rechaza el MIME ausente o distinto. No se añadieron opciones de configuración.
+
+La comprobación nativa del candidato en DEV generó un XLSX sintético y verificó
+POST firmado, tamaño/MIME/SHA256, GET firmado y recuperación del objeto de prueba.
+El objeto y los archivos temporales se retiraron; no se consultó SQL ni se reinició
+la API. Esto acredita almacenamiento y el transporte del candidato, no la
+activación completa de FileJobs, Keycloak o el navegador.

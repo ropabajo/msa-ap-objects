@@ -37,7 +37,9 @@ public sealed class MinioFileArtifactStore : IFileArtifactStore, IDisposable
         policy.SetBucket(_options.BucketName); policy.SetKey(artifact.StorageKey); policy.SetContentType(artifact.ContentType);
         policy.SetContentRange(artifact.SizeBytes, artifact.SizeBytes); policy.SetExpires(expiresAt.UtcDateTime);
         var grant = await _client.Value.PresignedPostPolicyAsync(new PresignedPostPolicyArgs().WithBucket(_options.BucketName).WithObject(artifact.StorageKey).WithPolicy(policy)).WaitAsync(cancellationToken);
-        return new FileUploadGrant { ArtifactId = artifact.ArtifactId, Url = grant.Item1.AbsoluteUri, Fields = new Dictionary<string, string>(grant.Item2), ExpiresAt = expiresAt };
+        // MinIO SDK 7 signs the MIME condition but does not add its multipart form field.
+        var fields = new Dictionary<string, string>(grant.Item2) { ["Content-Type"] = artifact.ContentType };
+        return new FileUploadGrant { ArtifactId = artifact.ArtifactId, Url = grant.Item1.AbsoluteUri, Fields = fields, ExpiresAt = expiresAt };
     }
 
     /// <inheritdoc />
