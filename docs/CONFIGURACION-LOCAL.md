@@ -170,3 +170,11 @@ Program.cs conserva 26 líneas; ApiServiceRegistration compone filtros y JWT té
 y Infrastructure registra FileJobs. El Secret dev-file-jobs-objects conserva solo
 ConnectionStrings__FileJobs; dev-file-jobs-church conserva FileWorker__ClientSecret.
 Las credenciales Rabbit se siguen obteniendo del runtime actual de cada MSA.
+
+El contrato Local de importación es v2/churches/{churchCode}/imports. Exige
+ActiveChurchRoute e IamAdmin y conserva la huella del solicitante. La ruta manda
+sobre el body; se comprueba también la propiedad del objeto subido. Listado,
+resultados y recuperación consultan solo la iglesia y el usuario autenticados.
+El controller legacy sin ámbito se retira en Local y permanece fuera de Local.
+No hay nuevas claves de conexión: registro y outbox usan DefaultConnection.
+Aplicar primero la migración incremental db_object y la plantilla única nueva.

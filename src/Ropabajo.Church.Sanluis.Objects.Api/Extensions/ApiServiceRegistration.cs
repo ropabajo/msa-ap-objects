@@ -14,12 +14,14 @@ public static class ApiServiceRegistration
     /// </summary>
     /// <param name="services">Colección de servicios del host.</param>
     /// <param name="configuration">Configuración efectiva del ambiente.</param>
+    /// <param name="environment">Ambiente del host para seleccionar el contrato de importación.</param>
     /// <returns>Colección con los adaptadores de la API registrados.</returns>
-    public static IServiceCollection AddObjectsApi(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddObjectsApi(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
         services.AddScoped<FileJobExceptionFilter>();
+        services.AddControllers(options => options.Conventions.Add(new ImportControllerConvention(environment.IsEnvironment("Local"))));
         var runtime = configuration.GetSection("FileJobs").Get<FileJobsRuntimeSettings>() ?? new FileJobsRuntimeSettings();
         services.AddServiceAccountAuthentication("FileJobsWorker", configuration["Keycloak:Authority"] ?? string.Empty,
             runtime.WorkerAudience, runtime.WorkerClients.Keys);

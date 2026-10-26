@@ -1,5 +1,9 @@
 using Ropabajo.Church.Sanluis.Objects.Infraestructure.FileJobs;
 using Microsoft.EntityFrameworkCore;
+using Naza.Church.BulkLoads.Contracts;
+using Ropabajo.Church.Sanluis.Objects.Application.Imports;
+using Ropabajo.Church.Sanluis.Objects.Infraestructure.Imports;
+using Ropabajo.Churc.Sanluis.Framework.Integration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Ropabajo.Churc.Sanluis.Framework.RabbitMq;
@@ -36,6 +40,11 @@ public static class InfrastructureServiceRegistration
 
         services.AddRabbitMq(Assembly.GetExecutingAssembly());
         services.AddFileJobs(configuration);
+        services.AddIntegrationJournal<DatabaseContext>(environmentName.Equals("Local", StringComparison.OrdinalIgnoreCase));
+        services.AddOutboxContract<BulkImportRegistered>("bulk.load.registered.v1");
+        services.AddOutboxContract<ImportRowRetryRequested>("bulk.row.retry-requested.v1");
+        services.AddScoped<IImportActor, HttpImportActor>(); services.AddScoped<IImportRepository, ImportRepository>();
+        services.AddScoped<CombinedImportService>();
 
         services.AddScoped(typeof(IBaseRepository<>), typeof(RepositoryBase<>));
         services.AddScoped<IObjectRepository, ObjectRepository>();

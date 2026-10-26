@@ -11,7 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddConfigServer();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment.EnvironmentName);
-builder.Services.AddObjectsApi(builder.Configuration);
+builder.Services.AddObjectsApi(builder.Configuration, builder.Environment);
 builder.Services.AddAuthz(builder.Configuration);
 builder.Services.AddBase();
 builder.Services.AddBaseSwagger();

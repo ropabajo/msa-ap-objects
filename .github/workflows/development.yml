@@ -36,14 +36,14 @@ jobs:
   publish:
     if: >-
       (github.ref == 'refs/heads/development' ||
-       (inputs.publish_only == true && github.ref == 'refs/heads/codex/dev-member-export-minio')) &&
+       (inputs.publish_only == true && (github.ref == 'refs/heads/codex/dev-member-export-minio' || github.ref == 'refs/heads/codex/persons-members-import'))) &&
       inputs.image_digest == ''
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
       digest: ${{ steps.image.outputs.digest }}
     env:
-      FRAMEWORK_REVISION: 87e1598d7d8ac36fcbc44558a31cf5ab01961711
+      FRAMEWORK_REVISION: f429e21b95180836689309b2217bcdf602e4e634
       IMAGE_TAG: ropbajo/msa-ap-objects:development-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
       DOTNET_CLI_TELEMETRY_OPTOUT: '1'
     services:
@@ -99,9 +99,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ropabajo/k8s-recipes
-          ref: 32901330a6679abb206a6d3a00bc5dc136fcd1c6
+          ref: b7770774caf92c353e4a875aace547c0ed1e684b
           token: ${{ secrets.TOKEN }}
           path: .broker
+          persist-credentials: false
+      - name: Checkout the confirmed import protocol
+        uses: actions/checkout@v4
+        with:
+          repository: naza-cross/msa-nc-bulkload-worker
+          ref: 4cef8a6a6efe90ccd061a46602b13a846e03c89c
+          token: ${{ secrets.TOKEN }}
+          path: .bulk-contracts
           persist-credentials: false
       - uses: actions/setup-dotnet@v4
         with:
@@ -128,7 +136,7 @@ jobs:
               <add key="nuget.org" value="https://api.nuget.org/v3/index.json"/>
             </packageSources>
             <packageSourceMapping>
-              <packageSource key="LocalAuthz"><package pattern="Ropabajo.Churc.Sanluis.Framework.Authz"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Primitives"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Mediator"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Core"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Files"/><package pattern="Ropabajo.Churc.Sanluis.Framework.RabbitMq"/></packageSource>
+              <packageSource key="LocalAuthz"><package pattern="Ropabajo.Churc.Sanluis.Framework.Authz"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Primitives"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Mediator"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Core"/><package pattern="Ropabajo.Churc.Sanluis.Framework.RabbitMq"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Files"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Integration"/><package pattern="Naza.Church.BulkLoads.Contracts"/></packageSource>
               <packageSource key="GitHub"><package pattern="Ropabajo.*"/></packageSource>
               <packageSource key="nuget.org"><package pattern="*"/></packageSource>
             </packageSourceMapping>
@@ -143,11 +151,13 @@ jobs:
           dotnet test "$authz_tests" --no-restore -c Release --logger 'trx;LogFileName=authz.trx' --results-directory "$image_dir/tests" -m:2
           dotnet pack "$authz_project" --no-restore -c Release -o "$LOCAL_AUTHZ_FEED" -m:2
           test -f "$LOCAL_AUTHZ_FEED/Ropabajo.Churc.Sanluis.Framework.Authz.1.1.4-dev.2.nupkg"
-          for project in primitives/Ropabajo.Churc.Sanluis.Framework.Primitives mediator/Ropabajo.Churc.Sanluis.Framework.Mediator core/Ropabajo.Churc.Sanluis.Framework.Core rabbitmq/Ropabajo.Churc.Sanluis.Framework.RabbitMq files/Ropabajo.Churc.Sanluis.Framework.Files; do
+          for project in primitives/Ropabajo.Churc.Sanluis.Framework.Primitives mediator/Ropabajo.Churc.Sanluis.Framework.Mediator core/Ropabajo.Churc.Sanluis.Framework.Core rabbitmq/Ropabajo.Churc.Sanluis.Framework.RabbitMq files/Ropabajo.Churc.Sanluis.Framework.Files integration/Ropabajo.Churc.Sanluis.Framework.Integration; do
             dotnet restore "$framework_root/$project" --configfile "$RUNNER_TEMP/public.config" --disable-parallel
             dotnet pack "$framework_root/$project" --no-restore -c Release -o "$LOCAL_AUTHZ_FEED" -m:2
           done
           export OBJECTS_SCHEMA_INIT_SQL="$GITHUB_WORKSPACE/.schema/docker-compose/mysql-db-object/db-init/init.sql"
+          dotnet restore "$GITHUB_WORKSPACE/.bulk-contracts/contracts/Naza.Church.BulkLoads.Contracts" --configfile "$RUNNER_TEMP/public.config" --disable-parallel
+          dotnet pack "$GITHUB_WORKSPACE/.bulk-contracts/contracts/Naza.Church.BulkLoads.Contracts" --no-restore -c Release -o "$LOCAL_AUTHZ_FEED" -m:2
           export FILE_JOBS_TEST_MYSQL='Server=127.0.0.1;Port=13316;User ID=root;SslMode=None'
           export FILE_JOBS_TEST_RABBITMQ=isolated
           export FILE_JOBS_TEST_TOPOLOGY_PATH="$RUNNER_TEMP/file-jobs-topology.json"
@@ -265,7 +275,7 @@ jobs:
         with:
           repository: ropabajo/k8s-recipes
           # Shared deployer and YAML recipes reviewed together at this exact commit.
-          ref: 9fae3dbead4a34c4d977fad9345d71f2ce431019
+          ref: b7770774caf92c353e4a875aace547c0ed1e684b
           token: ${{ secrets.TOKEN }}
           path: .recipes
           persist-credentials: false

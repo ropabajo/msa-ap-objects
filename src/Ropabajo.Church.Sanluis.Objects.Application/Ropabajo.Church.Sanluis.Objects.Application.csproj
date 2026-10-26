@@ -14,7 +14,7 @@
 		<PackageReference Include="Microsoft.AspNetCore.StaticFiles" Version="2.3.9" />
 		<PackageReference Include="Ropabajo.Churc.Sanluis.Framework.Mediator" Version="1.1.0-dev.1" />
 		<PackageReference Include="Ropabajo.Churc.Sanluis.Framework.MinIo" Version="1.0.1" />
-		<PackageReference Include="Ropabajo.Churc.Sanluis.Framework.RabbitMq" Version="1.1.0-dev.2" />
+		<PackageReference Include="Ropabajo.Churc.Sanluis.Framework.RabbitMq" Version="1.1.0-dev.3" />
 		<PackageReference Include="Ropabajo.Churc.Sanluis.Framework.Authz" Version="1.1.4-dev.2" />
 	</ItemGroup>
 
@@ -22,5 +22,9 @@
 		<ProjectReference Include="..\Ropabajo.Church.Sanluis.Objects.Domain\Ropabajo.Church.Sanluis.Objects.Domain.csproj" />
 	</ItemGroup>
 
-  <ItemGroup><PackageReference Include="Ropabajo.Churc.Sanluis.Framework.Files" Version="1.0.0-dev.4" /></ItemGroup>
+  <ItemGroup><PackageReference Include="Ropabajo.Churc.Sanluis.Framework.Files" Version="1.0.0-dev.5" /></ItemGroup>
+<ItemGroup>
+  <PackageReference Include="Ropabajo.Churc.Sanluis.Framework.Integration" Version="1.0.0-dev.1" />
+  <PackageReference Include="Naza.Church.BulkLoads.Contracts" Version="1.0.0-dev.1" />
+</ItemGroup>
 </Project>
