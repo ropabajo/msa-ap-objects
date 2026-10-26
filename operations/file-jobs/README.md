@@ -1,21 +1,30 @@
-# Trabajos de archivos de Objects
+# Trabajos de archivos: infraestructura DEV
 
-Las guías canónicas pertenecen a `church-ropabajo/docs`, carpeta `naza/backend`:
-`db-object-desarrollo.md`, `piloto-archivos.md` y `generacion-archivos.md`.
+La conexión AMQP es la sección RabbitMq existente del MSA; no hay un Broker por
+feature ni usuarios Rabbit adicionales. Las credenciales siguen en el Secret
+actual de la aplicación, sin copiarlas a dev-file-jobs-*.
 
-El usuario ya creó `db_object` y confirmó `usr_object` en `161.132.54.155:3306`.
-No repetir esa creación. El control SQL está **al final** de
-`docker-kubernetes-configs/docker-compose/mysql-db-object/db-init/init.sql`.
-Se retiró la copia `001_metadata_dev.sql`; modificar el esquema en su fuente canónica.
+Los nombres los fijan FileJobProducer y ChurchFileJobConsumer. Las definiciones
+viven en `k8s-recipes/rabbit-mq/definitions-configmap.yaml`, como el resto del
+proyecto. Se reutiliza nc.objects.exchange (direct) en local-vhost:
 
-El CI obtiene ese repositorio en un SHA fijo y pasa la ruta del init mediante
-`OBJECTS_SCHEMA_INIT_SQL`. Las pruebas extraen solo el bloque de las seis tablas
-`tarea_archivo*`, sobre MySQL 5.7.44 efímero en `127.0.0.1:13316`. No ejecutan el
-resto del init, sus cuentas ni sus catálogos. Ver `FileJobLifecycleTests`.
+| Ruta | Cola |
+| --- | --- |
+| nc.objects.file-jobs.church.requested | nc.churches.file-jobs.queue |
+| nc.objects.file-jobs.church.retry | nc.churches.file-jobs.retry.queue |
+| nc.objects.file-jobs.church.failed | nc.churches.file-jobs.dead.queue |
 
-El código Local y el operador común utilizan `mysql-local:3306`. Los Secrets reales
-deben comprobarse antes de desplegar; cambiar Git no sustituye el runtime histórico
-de `3307`. El arranque Local rechaza ese destino incluso con los trabajos apagados.
-`FileJobs.Enabled` y `FileWorker.Enabled` permanecen apagados.
-El archivo `rabbitmq-development.json` define la topología del piloto; no reemplazar
-las definiciones completas del broker ni incluir credenciales en él.
+El retry tiene TTL de 30 s y vuelve a requested; la principal rechaza hacia failed.
+La cola específica no compite con el consumidor existente de nc.churches.queue.
+Se retiró el JSON paralelo rabbitmq-development.json del MSA.
+
+Antes de activar DEV, verificar los bindings y permisos de la cuenta RabbitMq
+actual sobre esas rutas dentro de local-vhost. Incorporar solo esos recursos con
+el procedimiento habitual del broker, con respaldo/recuperación previos; no
+reemplazar definiciones completas ni modificar otros vhosts. Los aplicativos no
+administran topología y los flags siguen apagados.
+
+Secret de Objects: ConnectionStrings__FileJobs. Secret del worker de Church:
+FileWorker__ClientSecret. El cliente técnico Keycloak y audiencia objects-files
+se conservan para llamadas HTTP; Authority se toma de Keycloak.Authority.
+No hay credenciales Rabbit nuevas en estos Secrets.

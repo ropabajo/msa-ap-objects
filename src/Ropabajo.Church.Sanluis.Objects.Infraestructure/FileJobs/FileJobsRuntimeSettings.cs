@@ -1,5 +1,3 @@
-using Ropabajo.Churc.Sanluis.Framework.Files.Configuration;
-
 namespace Ropabajo.Church.Sanluis.Objects.Infraestructure.FileJobs;
 
 /// <summary>
@@ -7,12 +5,6 @@ namespace Ropabajo.Church.Sanluis.Objects.Infraestructure.FileJobs;
 /// </summary>
 public sealed class FileJobsRuntimeSettings
 {
-    /// <summary>
-    /// Autoridad HTTPS que emite los JWT de generadores técnicos.
-    /// </summary>
-    /// <example>https://auth-dev.idnsanluis.org/realms/church</example>
-    public string WorkerAuthority { get; set; } = string.Empty;
-
     /// <summary>
     /// Audiencia exclusiva de los endpoints de workers.
     /// </summary>
@@ -24,8 +16,4 @@ public sealed class FileJobsRuntimeSettings
     /// </summary>
     public Dictionary<string, string> WorkerClients { get; set; } = new();
 
-    /// <summary>
-    /// Transporte de la outbox con identidad de publicación restringida.
-    /// </summary>
-    public FileBrokerSettings Broker { get; set; } = new();
 }

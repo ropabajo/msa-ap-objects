@@ -31,6 +31,8 @@ public static class FileJobsServiceRegistration
         var section = configuration.GetSection("FileJobs");
         var settings = section.Get<FileJobsSettings>() ?? new FileJobsSettings();
         var runtime = section.Get<FileJobsRuntimeSettings>() ?? new FileJobsRuntimeSettings();
+        var authorityValue = configuration["Keycloak:Authority"] ?? string.Empty;
+        var rabbit = configuration.GetSection("RabbitMq").Get<RabbitMqOptions>() ?? new RabbitMqOptions();
         var connection = configuration.GetConnectionString("FileJobs") ?? string.Empty;
         services.AddOptions<FileJobsSettings>().Bind(section)
             .Validate(value => value.Environment is "development" or "production" && value.LeaseSeconds >= 30 && value.RunSeconds >= value.LeaseSeconds
@@ -43,7 +45,7 @@ public static class FileJobsServiceRegistration
         services.AddOptions<FileJobsRuntimeSettings>().Bind(section);
         if (settings.Enabled)
         {
-            if (!Uri.TryCreate(runtime.WorkerAuthority, UriKind.Absolute, out var authority) || authority.Scheme != "https"
+            if (!Uri.TryCreate(authorityValue, UriKind.Absolute, out var authority) || authority.Scheme != "https"
                 || !string.IsNullOrEmpty(authority.UserInfo) || runtime.WorkerAudience != "objects-files"
                 || runtime.WorkerClients.Count == 0 || runtime.WorkerClients.Any(client => string.IsNullOrWhiteSpace(client.Key) || client.Value != "church"))
                 throw new InvalidOperationException("FileJobs requires an explicit HTTPS worker authority, audience and allowed client map.");
@@ -58,10 +60,11 @@ public static class FileJobsServiceRegistration
                     || !string.Equals(applicationSql.Server, sql.Server, StringComparison.OrdinalIgnoreCase) || applicationSql.Port != sql.Port)
                     throw new InvalidOperationException("FileJobs development requires db_object on the same 3306 endpoint as DefaultConnection, using 161.132.54.155 or its mysql-local alias.");
             }
-            if (string.IsNullOrWhiteSpace(runtime.Broker.HostName) || string.IsNullOrWhiteSpace(runtime.Broker.VirtualHost)
-                || runtime.Broker.Port is < 1 or > 65535 || string.IsNullOrWhiteSpace(runtime.Broker.UserName) || string.IsNullOrWhiteSpace(runtime.Broker.Password)
-                || runtime.Broker.Exchange != settings.Environment + ".file-jobs.v1")
-                throw new InvalidOperationException("FileJobs:Broker requires dedicated credentials and the environment exchange.");
+            if (string.IsNullOrWhiteSpace(rabbit.HostName) || string.IsNullOrWhiteSpace(rabbit.VirtualHost)
+                || rabbit.Port < 1 || string.IsNullOrWhiteSpace(rabbit.UserName) || string.IsNullOrWhiteSpace(rabbit.Password))
+                throw new InvalidOperationException("FileJobs requires the existing RabbitMq connection of the microservice.");
+            if (settings.Environment == "development" && rabbit.VirtualHost is not ("local-vhost" or "dev-vhost"))
+                throw new InvalidOperationException("FileJobs development requires the existing DEV virtual host.");
             services.AddDbContextFactory<FileJobsDbContext>(options => options.UseMySql(connection, new MySqlServerVersion(new Version(5, 7, 44))));
             services.AddScoped<IFileJobStore, SqlFileJobStore>();
         }
@@ -71,7 +74,6 @@ public static class FileJobsServiceRegistration
         services.AddScoped<IFileJobActor, HttpFileJobActor>();
         services.AddSingleton<IFileArtifactStore, MinioFileArtifactStore>();
         services.AddScoped<FileJobService>();
-        services.AddRabbitMqProducer<GenerateFileCommand, FileJobProducer>(section.GetSection("Broker"));
         services.AddHostedService<FileJobsDispatcher>();
         return services;
     }

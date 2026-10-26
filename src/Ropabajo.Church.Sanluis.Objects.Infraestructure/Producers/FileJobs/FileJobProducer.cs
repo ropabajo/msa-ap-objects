@@ -1,7 +1,6 @@
-using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
+using Ropabajo.Churc.Sanluis.Framework.Files.Contracts;
 using Ropabajo.Churc.Sanluis.Framework.Files.Messaging;
-using Ropabajo.Church.Sanluis.Objects.Infraestructure.FileJobs;
 
 namespace Ropabajo.Church.Sanluis.Objects.Infraestructure.Producers.FileJobs;
 
@@ -10,9 +9,16 @@ namespace Ropabajo.Church.Sanluis.Objects.Infraestructure.Producers.FileJobs;
 /// </summary>
 public sealed class FileJobProducer : ConfirmedFilePublisher
 {
-    /// <summary>Selecciona el exchange de Objects y su conexión técnica propia.</summary>
-    /// <param name="factory">Fábrica inyectada por AddRabbitMqProducer, independiente del bus legacy.</param>
-    /// <param name="settings">Opciones del ambiente.</param>
-    public FileJobProducer(ConnectionFactory factory, IOptions<FileJobsRuntimeSettings> settings)
-        : base(factory, (settings ?? throw new ArgumentNullException(nameof(settings))).Value.Broker.Exchange) { }
+    /// <inheritdoc />
+    protected override string Exchange => "nc.objects.exchange";
+
+    /// <inheritdoc />
+    protected override string GetRoutingKey(GenerateFileCommand message)
+        => $"nc.objects.file-jobs.{message.Producer}.requested";
+
+    /// <summary>
+    /// Recibe la misma fábrica RabbitMq que los productores existentes de Objects.
+    /// </summary>
+    /// <param name="factory">Conexión del microservicio registrada por AddRabbitMq.</param>
+    public FileJobProducer(ConnectionFactory factory) : base(factory) { }
 }

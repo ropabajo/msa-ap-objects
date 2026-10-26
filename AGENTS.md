@@ -25,7 +25,15 @@
 
 - Mensajería nueva sigue la sección 13 de los lineamientos canónicos de Naza:
   IProducer<T>, productor concreto en Infrastructure y transporte confirmado del framework.
-- No duplicar canales, ACK, retry o reconexión en el MSA. Mantener identidades de
-  conexión separadas y fijar una revisión inmutable del framework en CI.
+- No duplicar canales, ACK, retry o reconexión en el MSA. Reutilizar la sección RabbitMq del MSA y fijar una revisión inmutable del framework en CI.
 - Program.cs compone capas y middleware; filtros/registros propios van en su capa,
   y el comportamiento reutilizable de autenticación o AMQP en Authz/RabbitMq.
+
+## Nombres y conexión RabbitMQ
+
+- Usar una sola sección RabbitMq por microservicio. No agregar FileJobs.Broker,
+  FileWorker.Broker, Queue o Exchange en appsettings para los nombres de mensajería.
+- Exchange/routing key se definen en el productor; QueueName en el consumidor,
+  siguiendo nc/ne/nb y el nombre del servicio. El ambiente lo separa VirtualHost.
+- Registrar sus bindings en las definiciones RabbitMQ existentes de k8s-recipes;
+  no crear otra fuente de topología en el MSA. No duplicar credenciales por feature.

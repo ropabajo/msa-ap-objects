@@ -23,7 +23,7 @@ public static class ApiServiceRegistration
         services.AddScoped<TemporaryExportExceptionFilter>();
         services.AddScoped<FileJobExceptionFilter>();
         var runtime = configuration.GetSection("FileJobs").Get<FileJobsRuntimeSettings>() ?? new FileJobsRuntimeSettings();
-        services.AddServiceAccountAuthentication("FileJobsWorker", runtime.WorkerAuthority,
+        services.AddServiceAccountAuthentication("FileJobsWorker", configuration["Keycloak:Authority"] ?? string.Empty,
             runtime.WorkerAudience, runtime.WorkerClients.Keys);
         return services;
     }

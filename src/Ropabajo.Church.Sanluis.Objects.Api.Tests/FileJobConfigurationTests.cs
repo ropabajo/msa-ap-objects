@@ -14,7 +14,6 @@ public sealed class FileJobConfigurationTests
         using var provider = services.BuildServiceProvider();
         Assert.IsType<DisabledFileJobStore>(provider.GetRequiredService<IFileJobStore>());
         Assert.Empty(new FileJobsRuntimeSettings().WorkerClients);
-        Assert.Empty(new FileJobsRuntimeSettings().WorkerAuthority);
     }
 
     [Theory]
@@ -80,18 +79,18 @@ public sealed class FileJobConfigurationTests
     {
         var values = Settings();
         values["FileJobs:Environment"] = "production";
-        values["FileJobs:Broker:Exchange"] = "production.file-jobs.v1";
+        values["RabbitMq:VirtualHost"] = "prod-vhost";
         values["ConnectionStrings:FileJobs"] = "Server=production.example.test;Database=db_file_jobs_prod;User ID=fixture;Password=local-test-only";
         var services = new ServiceCollection().AddFileJobs(new ConfigurationBuilder().AddInMemoryCollection(values).Build());
         Assert.Contains(services, descriptor => descriptor.ImplementationType == typeof(SqlFileJobStore));
     }
 
     [Fact]
-    public void Activation_rejects_unspecified_identity_and_another_environment_exchange()
+    public void Activation_rejects_unspecified_identity_and_missing_shared_broker_credentials()
     {
-        var values = Settings(); values["FileJobs:WorkerAuthority"] = "";
+        var values = Settings(); values["Keycloak:Authority"] = "";
         Assert.Throws<InvalidOperationException>(() => new ServiceCollection().AddFileJobs(new ConfigurationBuilder().AddInMemoryCollection(values).Build()));
-        values = Settings(); values["FileJobs:Broker:Exchange"] = "production.file-jobs.v1";
+        values = Settings(); values["RabbitMq:Password"] = "";
         Assert.Throws<InvalidOperationException>(() => new ServiceCollection().AddFileJobs(new ConfigurationBuilder().AddInMemoryCollection(values).Build()));
     }
 
@@ -99,14 +98,14 @@ public sealed class FileJobConfigurationTests
     {
         ["FileJobs:Enabled"] = "true",
         ["FileJobs:Environment"] = "development",
-        ["FileJobs:WorkerAuthority"] = "https://identity.example.test/realms/church",
+        ["Keycloak:Authority"] = "https://identity.example.test/realms/church",
         ["FileJobs:WorkerAudience"] = "objects-files",
         ["FileJobs:WorkerClients:test-worker"] = "church",
-        ["FileJobs:Broker:HostName"] = "127.0.0.1",
-        ["FileJobs:Broker:VirtualHost"] = "/",
-        ["FileJobs:Broker:UserName"] = "fixture",
-        ["FileJobs:Broker:Password"] = "local-test-only",
-        ["FileJobs:Broker:Exchange"] = "development.file-jobs.v1",
+        ["RabbitMq:HostName"] = "127.0.0.1",
+        ["RabbitMq:VirtualHost"] = "local-vhost",
+        ["RabbitMq:UserName"] = "fixture",
+        ["RabbitMq:Password"] = "local-test-only",
+        ["RabbitMq:Port"] = "5672",
         ["ConnectionStrings:DefaultConnection"] = "Server=mysql-local.church-dev.svc.cluster.local;Database=db_object;User ID=fixture;Password=local-test-only",
         ["ConnectionStrings:FileJobs"] = "Server=mysql-local.church-dev.svc.cluster.local;Database=db_object;User ID=fixture;Password=local-test-only"
     };

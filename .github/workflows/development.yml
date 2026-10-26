@@ -26,7 +26,7 @@ jobs:
     outputs:
       digest: ${{ steps.image.outputs.digest }}
     env:
-      FRAMEWORK_REVISION: 264a9e5b2814b53bf8e0cbf4460918a2f8232d35
+      FRAMEWORK_REVISION: 87e1598d7d8ac36fcbc44558a31cf5ab01961711
       IMAGE_TAG: ropbajo/msa-ap-objects:development-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
       DOTNET_CLI_TELEMETRY_OPTOUT: '1'
     services:
@@ -131,7 +131,7 @@ jobs:
             AllowedHosts:.AllowedHosts,
             Base:.Base,
             TemporaryExports:.TemporaryExports,
-            FileJobs:(.FileJobs | .Broker.UserName="" | .Broker.Password=""),
+            FileJobs:.FileJobs,
             spring:.spring,
             Keycloak:(.Keycloak | {Authority,Audience,AuthorizedParty,RoleClient,Enabled,RequireHttpsMetadata}),
             Redis:(.Redis | {Host,Port,Database,Ssl,User:"",Password:""}),
