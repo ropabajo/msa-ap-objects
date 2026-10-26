@@ -96,9 +96,12 @@ public sealed class FileJobLifecycleTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Repeating_the_canonical_task_schema_keeps_existing_objects_and_all_twelve_tables()
+    public async Task Repeating_the_canonical_task_schema_keeps_existing_objects_and_all_tables()
     {
         await using var context = _factory.CreateDbContext();
+        const string tableNamesSql = "SELECT table_name AS Value FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY table_name";
+        var tablesBefore = await context.Database.SqlQueryRaw<string>(tableNamesSql).ToListAsync();
+        Assert.True(tablesBefore.Count >= 12);
         await context.Database.ExecuteSqlRawAsync("""
             INSERT INTO objeto (ID_OBJETO, CODIGO_OBJETO, NOMBRE_OBJETO, NOMBRE_ARCHIVO,
               RUTA, EXTENSIONES_PERMITIDAS, LONGITUD_MAXIMA, EXPIRACION, FECHA,
@@ -111,8 +114,8 @@ public sealed class FileJobLifecycleTests : IAsyncLifetime
         Assert.True((await Create()).IsSuccess);
         var names = await context.Database.SqlQueryRaw<string>("SELECT NOMBRE_ARCHIVO AS Value FROM objeto").ToListAsync();
         Assert.Equal("conservar.xlsx", Assert.Single(names));
-        var count = await context.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM information_schema.tables WHERE table_schema = DATABASE()").SingleAsync();
-        Assert.Equal(12, count);
+        var tablesAfter = await context.Database.SqlQueryRaw<string>(tableNamesSql).ToListAsync();
+        Assert.Equal(tablesBefore, tablesAfter);
     }
 
     private static string CanonicalTaskSchema()
