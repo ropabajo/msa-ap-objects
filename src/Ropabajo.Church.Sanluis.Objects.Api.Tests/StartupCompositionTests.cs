@@ -22,7 +22,8 @@ public sealed class StartupCompositionTests
             ["FileJobs:Enabled"] = "false"
         }).Build();
         var services = new ServiceCollection(); services.AddLogging(); services.AddSingleton<IConfiguration>(configuration);
-        services.AddApplication(); services.AddInfrastructure(configuration, "Local"); services.AddObjectsApi(configuration);
+        var environment = new ImportFixtureEnvironment(); services.AddSingleton<IHostEnvironment>(environment);
+        services.AddApplication(); services.AddInfrastructure(configuration, "Local"); services.AddObjectsApi(configuration, environment);
         await using var provider = services.BuildServiceProvider();
         Assert.IsType<FileJobProducer>(Assert.Single(provider.GetServices<IProducer<GenerateFileCommand>>()));
         var dispatcher = Assert.Single(provider.GetServices<IHostedService>().OfType<FileJobsDispatcher>());
