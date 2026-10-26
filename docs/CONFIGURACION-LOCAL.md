@@ -21,7 +21,7 @@ no se utiliza como sustituto de Local.
 El fuente conserva esta plantilla sin credenciales:
 
 ```text
-server=mysql-objects-shared.church-dev.svc.cluster.local;database=db_object;user=;password=;port=3306;SslMode=None;
+server=mysql-local.church-dev.svc.cluster.local;database=db_object;user=;password=;port=3306;SslMode=None;
 ```
 
 El valor completo de `ConnectionStrings__DefaultConnection` se suministra mediante
@@ -37,7 +37,14 @@ La imagen vacía también User; Kubernetes aporta el usuario real del Secret.
 Database 1 separa claves de DB0, pero no concede permisos ACL ni aísla recursos
 físicos. Los permisos de los prefijos deben estar autorizados en Redis.
 
-MinIo usa Endpoint `minio-api.ropabajo.pe`, TLS y bucket privado `church-dev`. AccessKey/SecretKey provienen de `dev-objects-runtime` y corresponden a la identidad restringida de Objects. Su MySQL es la instancia compartida con producción: el Service 3306 se traduce al puerto externo 3307; la separación del bucket no separa los datos SQL.
+MinIo usa Endpoint `minio-api.ropabajo.pe`, TLS y bucket privado `church-dev`. AccessKey/SecretKey provienen de `dev-objects-runtime` y corresponden a la identidad restringida de Objects. SQL Local utiliza db_object en `161.132.54.155:3306`, con el alias `mysql-local.church-dev.svc.cluster.local:3306` y la cuenta DEV `usr_object` suministrada por el gestor privado.
+
+El runtime histórico usaba `mysql-objects-shared`, cuyo EndpointSlice traducía al
+3307 compartido con producción. Se conserva como antecedente y respaldo privado;
+no es el destino de este corte. Cambiar el fuente no actualiza el Secret activo:
+la transición sustituye únicamente `ConnectionStrings__DefaultConnection`, con
+precondiciones de UID/resourceVersion y conservando las claves MinIO existentes.
+No crea base, tablas, usuarios ni permisos y no ejecuta el init.sql.
 
 Los Secrets compartidos pueden contener claves para otros consumidores. Solo se
 documentan aquí las integraciones utilizadas por este aplicativo; no se agregan
@@ -78,3 +85,19 @@ sanitizados por el generador real del pipeline. Comprueba esquema Redis, tipos,
 plantilla SQL y ausencia de credenciales. No se conecta al servidor ni lee Secrets.
 El informe general está en
 [k8s-recipes: auditoría Local](https://github.com/ropabajo/k8s-recipes/blob/development/environments/church-dev/AUDITORIA-SETTINGS-LOCAL.md).
+
+Antes del corte se verificaron desde church-dev MySQL 5.7.44, las doce tablas y
+sus claves esperadas mediante una transacción de solo lectura. El respaldo DEV
+se restauró en un Pod aislado con MySQL 5.7.44 fijado por digest: coinciden
+esquema, índices y checksums de datos; la base fuente se conserva. También se
+ensayó restaurar el Secret en un nombre temporal y se retiraron los recursos de
+prueba. Los archivos privados permanecen en la VM, con permisos 700/600.
+
+Auditoría del 25/10/2026 (America/Lima): los ocho MSA pasaron el auditor común
+contra sus recetas fijadas y los settings sanitizados por sus workflows reales.
+Objects conserva el pin b8f02b2; este ajuste no cambia CI ni settings productivos.
+Las 54 columnas mapeadas por sus seis entidades legacy existen en db_object DEV.
+
+Este cambio ajusta únicamente el destino SQL Local y su documentación. La rama
+del piloto de archivos permanece separada; no incorpora sus casos de uso,
+workers, opciones o nuevos endpoints al despliegue base.
