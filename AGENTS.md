@@ -37,3 +37,17 @@
   siguiendo nc/ne/nb y el nombre del servicio. El ambiente lo separa VirtualHost.
 - Registrar sus bindings en las definiciones RabbitMQ existentes de k8s-recipes;
   no crear otra fuente de topología en el MSA. No duplicar credenciales por feature.
+
+## Estándar físico de base de datos
+
+- Tablas y columnas físicas en español, también en infraestructura técnica, inbox,
+  outbox e importaciones. Tablas en snake_case; columnas en MAYUSCULAS_CON_GUIONES.
+  Seguir los ejemplos existentes: persona / ID_PERSONA / CODIGO_PERSONA.
+- Clave interna numérica autoincremental ID_<ENTIDAD> y código público GUID
+  CODIGO_<ENTIDAD>; no convertir el código público en clave física por comodidad.
+- Mapear explícitamente los nombres físicos con Table/Column o Fluent API; los
+  nombres C# y los contratos de eventos no definen los nombres de columnas SQL.
+- Revisar SQL canónico y mappings juntos antes de crear tablas; documentar propósito,
+  propiedad del dato, índices, retención y recuperación de cada tabla técnica.
+- Los esquemas ya desplegados necesitan migración versionada con respaldo, prueba
+  y reversión; no renombrar columnas solo desde EF ni ejecutar DDL al arrancar.
