@@ -63,11 +63,14 @@ public sealed class SpanishImportSchemaTests : IAsyncLifetime
               '{"nota":"Niño de prueba"}', '2026-10-27 00:00:00.123456', NULL,
               '2026-10-27 00:00:01.654321', 2, NULL, NULL, NULL, 7);
             """);
-        if (imports) await Execute("""
-            SET @load=UUID(); SET @person=UUID();
-            INSERT INTO importacion_carga VALUES (@load, UUID(), REPEAT('a',64), '{}', UUID(), 'pending', NULL, '2026-10-27 00:00:00.123456', 3);
-            INSERT INTO importacion_fila VALUES (UUID(), @load, 2, UUID(), NULL, @person, NULL, '{}', NULL, 'person_pending', NULL, 'Prueba ñ', '2026-10-27 00:00:00.123456', 4);
-            """);
+        if (imports)
+        {
+            var load = Guid.NewGuid();
+            await Execute($$"""
+                INSERT INTO importacion_carga VALUES ('{{load:D}}', UUID(), REPEAT('a',64), '{}', UUID(), 'pending', NULL, '2026-10-27 00:00:00.123456', 3);
+                INSERT INTO importacion_fila VALUES (UUID(), '{{load:D}}', 2, UUID(), NULL, UUID(), NULL, '{}', NULL, 'person_pending', NULL, 'Prueba ñ', '2026-10-27 00:00:00.123456', 4);
+                """);
+        }
         if (replica) await Execute("INSERT INTO importacion_replica_persona VALUES (UUID(), 638970336001234567)");
         var tables = Journal.Concat(imports ? ["importacion_carga", "importacion_fila"] : Array.Empty<string>())
             .Concat(replica ? ["importacion_replica_persona"] : Array.Empty<string>()).ToArray();
