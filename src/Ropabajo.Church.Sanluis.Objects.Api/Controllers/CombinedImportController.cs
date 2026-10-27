@@ -186,7 +186,7 @@ public sealed class CombinedImportController : ControllerBase
     /// <response code="401">Se requiere una sesión autenticada válida.</response>
     /// <response code="403">La identidad carece de permiso o no pertenece al ámbito autorizado.</response>
     /// <response code="404">La carga o la fila no existen en el ámbito del solicitante.</response>
-    /// <response code="409">El estado de la fila no admite recuperación o la intención es incompatible.</response>
+    /// <response code="409">El estado de la fila no admite recuperación.</response>
     /// <response code="413">El cuerpo JSON supera el límite de metadatos permitido.</response>
     /// <response code="415">El cuerpo utiliza un tipo de contenido no admitido.</response>
     /// <response code="500">Error inesperado; el cuerpo no incluye detalles privados de infraestructura.</response>

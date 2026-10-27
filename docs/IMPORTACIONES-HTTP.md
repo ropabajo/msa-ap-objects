@@ -46,7 +46,7 @@ Una carga ajena se consulta como no encontrada, sin revelar que existe.
 
 El POST de recuperación recibe requestId. Application decide el paso recuperable
 sin repetir Persona si ya está confirmada. Una fila o carga ajena/inexistente
-produce 404; un estado no recuperable o una intención incompatible produce 409.
+produce 404; un estado no recuperable produce 409.
 
 ## Errores y filtro
 
