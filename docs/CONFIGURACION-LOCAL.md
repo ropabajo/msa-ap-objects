@@ -204,3 +204,16 @@ resultados y recuperación consultan solo la iglesia y el usuario autenticados.
 El controller legacy sin ámbito se retira en Local y permanece fuera de Local.
 No hay nuevas claves de conexión: registro y outbox usan DefaultConnection.
 Aplicar primero la migración incremental db_object y la plantilla única nueva.
+
+## Columnas de integración normalizadas en DEV
+
+Integration 1.0.0-dev.2 usa columnas físicas españolas y claves numéricas internas.
+La revisión fijada de framework es 6ab2e834262a68c17930bd3b1b2360f7f15e5ee9.
+Los códigos públicos, valores y contratos HTTP/RabbitMQ se conservan. Antes de
+arrancar este modelo sobre un esquema anterior, aplicar la migración incremental
+20261027-integration-columnas-espanol, con respaldos y escritores detenidos; no
+ejecutar init.sql ni DDL al arrancar. La migración ya está aplicada en church-dev.
+
+La adopción es explícita por servicio: no crea tablas en otras bases por instalar
+la librería. Procedimiento, comprobaciones y reversión:
+[operador común](https://github.com/ropabajo/k8s-recipes/blob/development/environments/church-dev/MIGRACION-COLUMNAS-IMPORTACION.md).
