@@ -41,3 +41,9 @@ dotnet run --project D:\gitRopabajo\msa-ap-objects\src\Ropabajo.Church.Sanluis.O
 ## Configuración Local
 
 Ver [settings, variables de entorno y secretos](docs/CONFIGURACION-LOCAL.md).
+
+## Exportaciones temporales
+
+Objects centraliza generación XLSX, almacenamiento privado en MinIO, reutilización,
+firmas y limpieza. Church conserva la consulta de miembros. Ver
+[contrato, límites y operación](docs/EXPORTACIONES-TEMPORALES.md).

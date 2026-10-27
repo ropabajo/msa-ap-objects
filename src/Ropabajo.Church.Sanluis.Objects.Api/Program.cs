@@ -1,3 +1,4 @@
+using Ropabajo.Church.Sanluis.Objects.Api.Extensions;
 using Ropabajo.Church.Sanluis.Objects.Application;
 using Ropabajo.Church.Sanluis.Objects.Infraestructure;
 using Ropabajo.Churc.Sanluis.Framework.Authz;
@@ -10,6 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddConfigServer();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment.EnvironmentName);
+builder.Services.AddObjectsApi(builder.Configuration, builder.Environment);
 builder.Services.AddAuthz(builder.Configuration);
 builder.Services.AddBase();
 builder.Services.AddBaseSwagger();

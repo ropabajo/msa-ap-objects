@@ -3,6 +3,20 @@ name: Objects Local - build, publish and deploy
 on:
   push:
     branches: [development]
+  workflow_call:
+    inputs:
+      publish_only:
+        description: Build a verified DEV candidate without running the SSH deploy job.
+        required: false
+        default: false
+        type: boolean
+      image_digest:
+        required: false
+        default: ''
+        type: string
+    outputs:
+      image_digest:
+        value: ${{ jobs.publish.outputs.digest }}
   workflow_dispatch:
     inputs:
       image_digest:
@@ -20,15 +34,34 @@ concurrency:
 
 jobs:
   publish:
-    if: github.ref == 'refs/heads/development' && inputs.image_digest == ''
+    if: >-
+      (github.ref == 'refs/heads/development' ||
+       (inputs.publish_only == true && (github.ref == 'refs/heads/codex/dev-member-export-minio' || github.ref == 'refs/heads/codex/persons-members-import'))) &&
+      inputs.image_digest == ''
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
       digest: ${{ steps.image.outputs.digest }}
     env:
-      FRAMEWORK_REVISION: d03fc4bc1742d704eaf602955cd907f23681aa2e
+      FRAMEWORK_REVISION: f429e21b95180836689309b2217bcdf602e4e634
       IMAGE_TAG: ropbajo/msa-ap-objects:development-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
       DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+    services:
+      file-jobs-mysql:
+        image: mysql@sha256:dab0a802b44617303694fb17d166501de279c3031ddeb28c56ecf7fcab5ef0da
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_ROOT_HOST: '%'
+        ports: ['13316:3306']
+        options: --health-cmd "mysqladmin ping --silent" --health-interval 5s --health-timeout 10s --health-retries 30
+      file-jobs-rabbitmq:
+        image: rabbitmq@sha256:d7af1c87c5f1eda13fcfca06db452bf3aeab6619fc3358b68535c0c02c4e52bc
+        env:
+          RABBITMQ_DEFAULT_USER: files-test
+          RABBITMQ_DEFAULT_PASS: local-fixture-only
+          RABBITMQ_DEFAULT_VHOST: local-vhost
+        ports: ['13372:5672']
+        options: --health-cmd "rabbitmq-diagnostics -q check_running" --health-interval 5s --health-timeout 10s --health-retries 20
     steps:
       - name: Check required secret bindings
         env:
@@ -53,6 +86,30 @@ jobs:
           ref: ${{ env.FRAMEWORK_REVISION }}
           token: ${{ secrets.TOKEN }}
           path: .framework
+          persist-credentials: false
+      - name: Checkout canonical Objects schema
+        uses: actions/checkout@v4
+        with:
+          repository: ropabajo/docker-kubernetes-configs
+          ref: 9eaf8f19a91a1288b12918caad6e5fc785f1766d
+          token: ${{ secrets.TOKEN }}
+          path: .schema
+          persist-credentials: false
+      - name: Checkout canonical DEV broker topology
+        uses: actions/checkout@v4
+        with:
+          repository: ropabajo/k8s-recipes
+          ref: b7770774caf92c353e4a875aace547c0ed1e684b
+          token: ${{ secrets.TOKEN }}
+          path: .broker
+          persist-credentials: false
+      - name: Checkout the confirmed import protocol
+        uses: actions/checkout@v4
+        with:
+          repository: naza-cross/msa-nc-bulkload-worker
+          ref: 4cef8a6a6efe90ccd061a46602b13a846e03c89c
+          token: ${{ secrets.TOKEN }}
+          path: .bulk-contracts
           persist-credentials: false
       - uses: actions/setup-dotnet@v4
         with:
@@ -79,7 +136,7 @@ jobs:
               <add key="nuget.org" value="https://api.nuget.org/v3/index.json"/>
             </packageSources>
             <packageSourceMapping>
-              <packageSource key="LocalAuthz"><package pattern="Ropabajo.Churc.Sanluis.Framework.Authz"/></packageSource>
+              <packageSource key="LocalAuthz"><package pattern="Ropabajo.Churc.Sanluis.Framework.Authz"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Primitives"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Mediator"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Core"/><package pattern="Ropabajo.Churc.Sanluis.Framework.RabbitMq"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Files"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Integration"/><package pattern="Naza.Church.BulkLoads.Contracts"/></packageSource>
               <packageSource key="GitHub"><package pattern="Ropabajo.*"/></packageSource>
               <packageSource key="nuget.org"><package pattern="*"/></packageSource>
             </packageSourceMapping>
@@ -93,27 +150,41 @@ jobs:
           dotnet restore "$authz_tests" --configfile "$RUNNER_TEMP/public.config" --disable-parallel
           dotnet test "$authz_tests" --no-restore -c Release --logger 'trx;LogFileName=authz.trx' --results-directory "$image_dir/tests" -m:2
           dotnet pack "$authz_project" --no-restore -c Release -o "$LOCAL_AUTHZ_FEED" -m:2
-          test -f "$LOCAL_AUTHZ_FEED/Ropabajo.Churc.Sanluis.Framework.Authz.1.1.4-dev.1.nupkg"
+          test -f "$LOCAL_AUTHZ_FEED/Ropabajo.Churc.Sanluis.Framework.Authz.1.1.4-dev.2.nupkg"
+          for project in primitives/Ropabajo.Churc.Sanluis.Framework.Primitives mediator/Ropabajo.Churc.Sanluis.Framework.Mediator core/Ropabajo.Churc.Sanluis.Framework.Core rabbitmq/Ropabajo.Churc.Sanluis.Framework.RabbitMq files/Ropabajo.Churc.Sanluis.Framework.Files integration/Ropabajo.Churc.Sanluis.Framework.Integration; do
+            dotnet restore "$framework_root/$project" --configfile "$RUNNER_TEMP/public.config" --disable-parallel
+            dotnet pack "$framework_root/$project" --no-restore -c Release -o "$LOCAL_AUTHZ_FEED" -m:2
+          done
+          export OBJECTS_SCHEMA_INIT_SQL="$GITHUB_WORKSPACE/.schema/docker-compose/mysql-db-object/db-init/init.sql"
+          dotnet restore "$GITHUB_WORKSPACE/.bulk-contracts/contracts/Naza.Church.BulkLoads.Contracts" --configfile "$RUNNER_TEMP/public.config" --disable-parallel
+          dotnet pack "$GITHUB_WORKSPACE/.bulk-contracts/contracts/Naza.Church.BulkLoads.Contracts" --no-restore -c Release -o "$LOCAL_AUTHZ_FEED" -m:2
+          export FILE_JOBS_TEST_MYSQL='Server=127.0.0.1;Port=13316;User ID=root;SslMode=None'
+          export FILE_JOBS_TEST_RABBITMQ=isolated
+          export FILE_JOBS_TEST_TOPOLOGY_PATH="$RUNNER_TEMP/file-jobs-topology.json"
+          python3 "$GITHUB_WORKSPACE/.broker/rabbit-mq/extract-topology.py" "$GITHUB_WORKSPACE/.broker/rabbit-mq/definitions-configmap.yaml" local-vhost > "$FILE_JOBS_TEST_TOPOLOGY_PATH"
           objects_api=src/Ropabajo.Church.Sanluis.Objects.Api/Ropabajo.Church.Sanluis.Objects.Api.csproj
-          printf '%s\n' 'No application test project exists; shared Authz suite executed above.'
+          objects_tests=src/Ropabajo.Church.Sanluis.Objects.Api.Tests/Ropabajo.Church.Sanluis.Objects.Api.Tests.csproj
+          dotnet restore "$objects_tests" --configfile "$restore_config" --disable-parallel
+          dotnet test "$objects_tests" --no-restore -c Release --logger 'trx;LogFileName=objects.trx' --results-directory "$image_dir/tests" -m:2
           dotnet restore "$objects_api" --configfile "$restore_config" --disable-parallel
           dotnet publish "$objects_api" --no-restore -c Release -o "$image_dir/app" -m:2
           # Publish output is the entire Docker context. Exclude every source setting.
           find "$image_dir/app" -maxdepth 1 -name 'appsettings*.json' -type f -delete
           jq '{Logging:.Logging,AllowedHosts:.AllowedHosts}' src/Ropabajo.Church.Sanluis.Objects.Api/appsettings.Local.json > "$image_dir/app/appsettings.json"
           jq '{
-            ConnectionStrings:{DefaultConnection:""},
+            ConnectionStrings:{DefaultConnection:"",FileJobs:""},
             Swagger:.Swagger,
             Logging:.Logging,
             AllowedHosts:.AllowedHosts,
             Base:.Base,
+            FileJobs:.FileJobs,
             spring:.spring,
             Keycloak:(.Keycloak | {Authority,Audience,AuthorizedParty,RoleClient,Enabled,RequireHttpsMetadata}),
             Redis:(.Redis | {Host,Port,Database,Ssl,User:"",Password:""}),
             RabbitMq:(.RabbitMq | {HostName,Port,VirtualHost,UseSsl,UserName:"",Password:""}),
             MinIo:(.MinIo | {Endpoint,UseSsl,BucketName,AccessKey:"",SecretKey:""})
           }' src/Ropabajo.Church.Sanluis.Objects.Api/appsettings.Local.json > "$image_dir/app/appsettings.Local.json"
-          jq -e '.libraries | has("Ropabajo.Churc.Sanluis.Framework.Authz/1.1.4-dev.1")' "$image_dir/app/Ropabajo.Church.Sanluis.Objects.Api.deps.json" > /dev/null
+          jq -e '.libraries | has("Ropabajo.Churc.Sanluis.Framework.Authz/1.1.4-dev.2")' "$image_dir/app/Ropabajo.Church.Sanluis.Objects.Api.deps.json" > /dev/null
           jq -e '.ConnectionStrings.DefaultConnection == "" and .Redis.Database == 1 and .Redis.Password == "" and .Redis.User == "" and .RabbitMq.UserName == "" and .RabbitMq.Password == "" and .MinIo.AccessKey == "" and .MinIo.SecretKey == ""' "$image_dir/app/appsettings.Local.json" > /dev/null
           test "$(find "$image_dir/app" -maxdepth 1 -name 'appsettings*.json' | wc -l)" -eq 2
           cat > "$image_dir/Dockerfile" <<'DOCKER'
@@ -126,7 +197,7 @@ jobs:
           printf '%s\n' '*' '!app/' '!app/**' '!Dockerfile' > "$image_dir/.dockerignore"
           authz_sha=$(sha256sum "$image_dir/app/Ropabajo.Churc.Sanluis.Framework.Authz.dll" | cut -d' ' -f1)
           jq -n --arg source "$(git rev-parse HEAD)" --arg framework "$(git -C .framework rev-parse HEAD)" --arg authz "$authz_sha" \
-            '{sourceCommit:$source,frameworkCommit:$framework,authzAssemblySha256:$authz,authzPackageVersion:"1.1.4-dev.1",sanitizedLocalSettingsIncluded:true,runtimeSecretsRequired:true,redisDatabase:1}' > "$image_dir/provenance.json"
+            '{sourceCommit:$source,frameworkCommit:$framework,authzAssemblySha256:$authz,authzPackageVersion:"1.1.4-dev.2",sanitizedLocalSettingsIncluded:true,runtimeSecretsRequired:true,redisDatabase:1}' > "$image_dir/provenance.json"
       - uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -179,7 +250,7 @@ jobs:
     name: Deploy YAML to church-dev
     needs: publish
     if: >-
-      always() && !cancelled() && github.ref == 'refs/heads/development' &&
+      always() && !cancelled() && inputs.publish_only != true && github.ref == 'refs/heads/development' &&
       (needs.publish.result == 'success' ||
        (needs.publish.result == 'skipped' && inputs.image_digest != ''))
     runs-on: ubuntu-latest
@@ -204,7 +275,7 @@ jobs:
         with:
           repository: ropabajo/k8s-recipes
           # Shared deployer and YAML recipes reviewed together at this exact commit.
-          ref: b8f02b29cb261cc0d2926a95066964ec21c57df2
+          ref: b7770774caf92c353e4a875aace547c0ed1e684b
           token: ${{ secrets.TOKEN }}
           path: .recipes
           persist-credentials: false

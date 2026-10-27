@@ -1,4 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
+using Ropabajo.Churc.Sanluis.Framework.Integration;
+using Ropabajo.Church.Sanluis.Objects.Infraestructure.Imports;
 using Microsoft.EntityFrameworkCore;
 using Ropabajo.Church.Sanluis.Objects.Domain.Common;
 using Ropabajo.Church.Sanluis.Objects.Domain.Entities;
@@ -29,6 +31,11 @@ public class DatabaseContext : DbContext
     public virtual DbSet<Object> Objects { get; set; }
 
     public virtual DbSet<ObjectState> ObjectStates { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder); modelBuilder.AddIntegrationJournal(); modelBuilder.AddImports();
+    }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
     {

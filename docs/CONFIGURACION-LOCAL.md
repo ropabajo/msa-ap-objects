@@ -12,6 +12,7 @@ no se utiliza como sustituto de Local.
 | `RabbitMq` | `rabbitmq-shared.church-dev.svc.cluster.local:5672`, VirtualHost `local-vhost`, UseSsl `false`; usuario y contraseña mediante Secret compartido |
 | `Keycloak` | Authority `https://auth-dev.idnsanluis.org/realms/church`, Audience `account`, AuthorizedParty/RoleClient `web-ap-container`, Enabled y RequireHttpsMetadata `true` |
 | `MinIo` | `minio-api.ropabajo.pe`, UseSsl `true`, BucketName `church-dev`; claves vacías en el fuente |
+| `FileJobs` | Enabled=true en la revisión de activación DEV; registro durable, retención y límites del único flujo de generación |
 | `Base.Path` | Cadena vacía: Nginx retira el prefijo público al enviar a la API |
 | `spring.cloud.config.enabled` | `false`: configuración Local sin servidor Spring Config |
 | `Logging` / `AllowedHosts` | Default `Warning`, Microsoft.Hosting.Lifetime `Information`; AllowedHosts `*`, como los defaults previos de la imagen |
@@ -102,6 +103,104 @@ El registro de persistencia usa el dialecto MySQL 5.7.44 en Local, que coincide
 con el servidor DEV comprobado, y conserva 8.0.21 para los demás ambientes.
 La configuración y el ambiente se reciben directamente desde el host.
 
-Este cambio ajusta el destino y el dialecto SQL Local y su documentación. La rama
-del piloto de archivos permanece separada; no incorpora sus casos de uso,
-workers, opciones o nuevos endpoints al despliegue base.
+La integración conserva el destino SQL Local 3306 y su dialecto verificado,
+e incorpora los casos de archivos e importaciones descritos a continuación.
+
+
+## Trabajos de archivos (piloto)
+
+Se retiraron TemporaryExports, sus endpoints de filas JSON, coordinador, worker y
+generador ClosedXML. El único protocolo de generación es FileJobs; Church genera
+el XLSX por páginas y lo sube directamente con una autorización temporal. Las
+rutas genéricas conservan bloqueado temporary-exports/ para no abrir el acceso a
+posibles artefactos anteriores. Este cambio de fuente no borra archivos ni tablas.
+
+Las opciones nuevas están versionadas en `appsettings.Local.json` y se incorporan
+al contexto sanitizado de la imagen desde ese mismo archivo. La revisión de
+activación habilita FileJobs en Local después de preparar las dependencias y el
+respaldo recuperado. Producción no cambia. Ver el procedimiento
+canónico en [docs/naza/backend/piloto-archivos.md](https://github.com/church-ropabajo/docs/blob/main/naza/backend/piloto-archivos.md).
+
+Objects consume `FileJobs` y `ConnectionStrings:FileJobs`; Church consume `FileWorker`.
+Las credenciales se inyectan por los Secrets específicos opcionales; no incluyen flags
+públicos. El runtime usa la precedencia habitual: variables de entorno sobre JSON.
+El usuario técnico Rabbit es distinto por servicio. Solo Objects conserva credenciales
+MinIO, y el worker usa una política de subida temporal, sin claves permanentes.
+En desarrollo el registro exige `db_object` en el mismo servidor/puerto que
+`DefaultConnection`, mediante `mysql-local:3306` o `161.132.54.155:3306`.
+La cuenta confirmada es `usr_object`; el fuente mantiene usuario y contraseña
+vacíos. Los valores efectivos se inyectan mediante `dev-objects-runtime` y
+`dev-file-jobs-objects`. Si el primero aún apunta a 3307, preparar la transición
+antes de desplegar. El arranque Local rechaza el destino histórico incluso con
+FileJobs apagado y utiliza el dialecto MySQL 5.7.44. Registrar dependencias no
+abre SQL ni ejecuta migraciones.
+
+El CI obtiene el `init.sql` canónico de docker-kubernetes-configs en una revisión
+inmutable y proporciona su ruta con `OBJECTS_SCHEMA_INIT_SQL`. Las pruebas usan
+solo el bloque de tareas dentro de MySQL efímero local. No hay otra copia SQL
+en el MSA ni cambios a cuentas desde estas pruebas.
+
+## RabbitMQ según el estándar del proyecto
+
+La conexión se define una sola vez en RabbitMq y utiliza los Secrets existentes
+del MSA. FileWorker/FileJobs no contienen Broker, Queue ni Exchange. Los nombres
+se definen en los productores/consumidores de Infrastructure y en
+k8s-recipes/rabbit-mq/definitions-configmap.yaml, como los demás mensajes.
+
+El piloto reutiliza nc.objects.exchange, de tipo direct, dentro de local-vhost:
+
+| Routing key | Cola |
+| --- | --- |
+| nc.objects.file-jobs.church.requested | nc.churches.file-jobs.queue |
+| nc.objects.file-jobs.church.retry | nc.churches.file-jobs.retry.queue |
+| nc.objects.file-jobs.church.failed | nc.churches.file-jobs.dead.queue |
+
+La cola específica evita competir con los eventos de personas de nc.churches.queue.
+No se añaden exchanges ni cuentas Rabbit por feature. Los permisos se verifican
+sobre la cuenta DEV que ya utiliza el microservicio. La preparación posterior
+instaló las tres colas/bindings en local-vhost con recuperación previa verificada.
+La revisión de activación pone FileJobs.Enabled=true en el fuente y en la imagen
+sanitizada. Ambos Secrets están preparados y el token técnico DEV fue verificado.
+El pipeline de verificación reutiliza el workflow Local en modo publish_only:
+publica un digest tras las pruebas y omite el job SSH. La activación coordinada
+usa el operador YAML común desde codex-dev; no requiere copiar su clave administrativa.
+dev-file-jobs-objects conserva solo la conexión 3306 aprobada. Estado operativo:
+[FileJobs DEV](https://github.com/ropabajo/k8s-recipes/blob/codex/file-generation-standard/environments/church-dev/FILE-JOBS.md).
+
+El código fija ap-framework 87e1598: RabbitMq 1.1.0-dev.2, Files 1.0.0-dev.4 y
+Authz 1.1.4-dev.2. AddRabbitMq descubre los productores de IProducer<T> y comparte
+su fábrica. FileJobProducer define exchange/routing key y ChurchFileJobConsumer
+define QueueName y ruta de retry. Se conservan confirms, persistencia y ACK manual.
+
+Worker deriva TokenEndpoint de Keycloak.Authority, StorageHosts de MinIo.Endpoint
+y utiliza RabbitMq.MaxRetryAttempts (tres por defecto) para reintentos y su Producer se fija al registrar
+AddFileWorker<ChurchFileJobConsumer>(configuration, "church"). Objects valida el
+JWT técnico con esa misma Authority. Se mantienen ClientId/ClientSecret del worker
+y su audiencia, que autorizan HTTP y no constituyen otra conexión Rabbit.
+
+Las imágenes se derivan del fuente; no se recrean Broker anidados durante el
+saneamiento. Los workflows de verificación prueban las clases reales contra las
+definiciones canónicas en RabbitMQ/MySQL efímeros. Publican candidatos con los
+flags del fuente y omiten el despliegue SSH en publish_only.
+
+El 26/10/2026 se desplegó el candidato de fuente 372b763 como codex-dev, con
+FileJobs activo. La configuración sanitizada incluida en el Pod coincide con la
+derivada del fuente. El backend completó un XLSX sintético de ocho columnas sin
+filas personales mediante RabbitMQ, worker con JWT técnico y MinIO; se verificaron
+descarga y aislamiento de propietario/iglesia en el servicio y se retiró la prueba.
+La API de usuario rechazó el token técnico y la petición anónima (401). El login
+y flujo completo de una persona en navegador continúan pendientes. Digests,
+respaldos y evidencias están en la guía operativa FileJobs DEV enlazada arriba.
+
+Program.cs conserva 26 líneas; ApiServiceRegistration compone filtros y JWT técnico,
+y Infrastructure registra FileJobs. El Secret dev-file-jobs-objects conserva solo
+ConnectionStrings__FileJobs; dev-file-jobs-church conserva FileWorker__ClientSecret.
+Las credenciales Rabbit se siguen obteniendo del runtime actual de cada MSA.
+
+El contrato Local de importación es v2/churches/{churchCode}/imports. Exige
+ActiveChurchRoute e IamAdmin y conserva la huella del solicitante. La ruta manda
+sobre el body; se comprueba también la propiedad del objeto subido. Listado,
+resultados y recuperación consultan solo la iglesia y el usuario autenticados.
+El controller legacy sin ámbito se retira en Local y permanece fuera de Local.
+No hay nuevas claves de conexión: registro y outbox usan DefaultConnection.
+Aplicar primero la migración incremental db_object y la plantilla única nueva.
