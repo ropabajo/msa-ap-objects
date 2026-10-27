@@ -24,7 +24,7 @@
 
   <ItemGroup><PackageReference Include="Ropabajo.Churc.Sanluis.Framework.Files" Version="1.0.0-dev.5" /></ItemGroup>
 <ItemGroup>
-  <PackageReference Include="Ropabajo.Churc.Sanluis.Framework.Integration" Version="1.0.0-dev.1" />
+  <PackageReference Include="Ropabajo.Churc.Sanluis.Framework.Integration" Version="1.0.0-dev.2" />
   <PackageReference Include="Naza.Church.BulkLoads.Contracts" Version="1.0.0-dev.1" />
 </ItemGroup>
 </Project>

@@ -43,7 +43,7 @@ jobs:
     outputs:
       digest: ${{ steps.image.outputs.digest }}
     env:
-      FRAMEWORK_REVISION: f429e21b95180836689309b2217bcdf602e4e634
+      FRAMEWORK_REVISION: 6ab2e834262a68c17930bd3b1b2360f7f15e5ee9
       IMAGE_TAG: ropbajo/msa-ap-objects:development-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
       DOTNET_CLI_TELEMETRY_OPTOUT: '1'
     services:
@@ -91,7 +91,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ropabajo/docker-kubernetes-configs
-          ref: 9eaf8f19a91a1288b12918caad6e5fc785f1766d
+          ref: f77e49f7505279c2b37af6c7fcbb287a79e99b2f
           token: ${{ secrets.TOKEN }}
           path: .schema
           persist-credentials: false

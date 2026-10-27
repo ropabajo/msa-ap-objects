@@ -5,6 +5,9 @@ namespace Ropabajo.Church.Sanluis.Objects.Domain.Imports;
 /// </summary>
 public sealed class ImportRow
 {
+    /// <summary>Identidad numérica interna; el código público existente se conserva.</summary>
+    public long Id { get; set; }
+
     /// <summary>
     /// Código público de fila.
     /// </summary>
