@@ -151,6 +151,31 @@ public sealed class FileJobLifecycleTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Ready_reuse_is_scoped_to_the_same_filters_and_lasts_less_than_five_minutes()
+    {
+        var ready = await Ready();
+        var immediate = (await Create()).Value;
+        Assert.Equal(ready.JobId, immediate.JobId);
+        Assert.True(immediate.Reused);
+        _clock.Advance(299);
+        Assert.Equal(ready.JobId, (await Create()).Value.JobId);
+
+        Assert.NotEqual(ready.JobId, (await Create(parameters: new { fullName = "OTROS" })).Value.JobId);
+        var parameters = JsonSerializer.SerializeToElement(new { fullName = "PÉREZ", stateCode = (int?)null });
+        var otherOwner = await _service.CreateAsync(_owner with { OwnerHash = new string('b', 64) },
+            Guid.NewGuid(), "members.excel", 1, parameters, false, default);
+        Assert.NotEqual(ready.JobId, otherOwner.Value.JobId);
+        var otherChurch = await _service.CreateAsync(_owner with { ChurchCode = Guid.NewGuid() },
+            Guid.NewGuid(), "members.excel", 1, parameters, false, default);
+        Assert.NotEqual(ready.JobId, otherChurch.Value.JobId);
+
+        _clock.Advance(1);
+        var fresh = (await Create()).Value;
+        Assert.NotEqual(ready.JobId, fresh.JobId);
+        Assert.False(fresh.Reused);
+    }
+
+    [Fact]
     public async Task Same_intention_is_stable_but_cannot_change_its_parameters()
     {
         var intent = Guid.NewGuid(); var first = (await Create(intent)).Value;
