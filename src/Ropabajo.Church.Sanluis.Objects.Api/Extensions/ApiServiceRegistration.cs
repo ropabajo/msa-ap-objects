@@ -1,5 +1,5 @@
 using Ropabajo.Churc.Sanluis.Framework.Authz;
-using Ropabajo.Church.Sanluis.Objects.Api.Controllers;
+using Ropabajo.Church.Sanluis.Objects.Api.Filters;
 using Ropabajo.Church.Sanluis.Objects.Infraestructure.FileJobs;
 
 namespace Ropabajo.Church.Sanluis.Objects.Api.Extensions;
