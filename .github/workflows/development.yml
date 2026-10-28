@@ -91,7 +91,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ropabajo/docker-kubernetes-configs
-          ref: da389fd9bc9295e0bf960b0f381e382c8114bd80
+          ref: f01c74f95002bee251bcf74172bf72d22c2fdcc5
           token: ${{ secrets.TOKEN }}
           path: .schema
           persist-credentials: false
