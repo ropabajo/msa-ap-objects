@@ -4,10 +4,14 @@ using Ropabajo.Church.Sanluis.Objects.Application.Imports;
 
 namespace Ropabajo.Church.Sanluis.Objects.Api.Realtime;
 
-/// <summary>Compone transporte y observación de contadores, sin SQL adicional ni otro broker.</summary>
+/// <summary>
+/// Compone transporte y observación de contadores, sin SQL adicional ni otro broker.
+/// </summary>
 public static class ImportProgressRegistration
 {
-    /// <summary>Registra el canal exclusivamente en el contrato Local de importación.</summary>
+    /// <summary>
+    /// Registra el canal exclusivamente en el contrato Local de importación.
+    /// </summary>
     public static IServiceCollection AddImportProgress(
         this IServiceCollection services,
         IHostEnvironment environment
@@ -33,7 +37,9 @@ public static class ImportProgressRegistration
         return services;
     }
 
-    /// <summary>Habilita el reconocimiento del upgrade antes del middleware de autenticación.</summary>
+    /// <summary>
+    /// Habilita el reconocimiento del upgrade antes del middleware de autenticación.
+    /// </summary>
     public static WebApplication UseImportProgress(this WebApplication app)
     {
         if (app.Environment.IsEnvironment("Local"))
@@ -41,7 +47,9 @@ public static class ImportProgressRegistration
         return app;
     }
 
-    /// <summary>Expone únicamente WebSocket; la sesión se cierra al vencer su autenticación.</summary>
+    /// <summary>
+    /// Expone únicamente WebSocket; la sesión se cierra al vencer su autenticación.
+    /// </summary>
     public static WebApplication MapImportProgress(this WebApplication app)
     {
         if (app.Environment.IsEnvironment("Local"))

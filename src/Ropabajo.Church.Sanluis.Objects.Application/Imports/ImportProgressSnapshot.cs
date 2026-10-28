@@ -1,6 +1,8 @@
 namespace Ropabajo.Church.Sanluis.Objects.Application.Imports;
 
-/// <summary>Contadores confirmados de una carga; nunca incluye filas, mensajes o datos de Persona.</summary>
+/// <summary>
+/// Contadores confirmados de una carga; nunca incluye filas, mensajes o datos de Persona.
+/// </summary>
 /// <param name="BulkLoadCode">Código público de carga.</param>
 /// <param name="Status">Estado durable del procesamiento.</param>
 /// <param name="StateCode">Estado de bandeja compatible con el listado.</param>

@@ -9,7 +9,9 @@ using Ropabajo.Church.Sanluis.Objects.Application.Imports;
 
 namespace Ropabajo.Church.Sanluis.Objects.Api.Realtime;
 
-/// <summary>Canal de contadores propios de la iglesia validada al preparar el ticket.</summary>
+/// <summary>
+/// Canal de contadores propios de la iglesia validada al preparar el ticket.
+/// </summary>
 [Authorize(AuthenticationSchemes = ConnectionTicketStore.Scheme)]
 public sealed class ImportProgressHub : Hub
 {
@@ -51,7 +53,9 @@ public sealed class ImportProgressHub : Hub
         return base.OnConnectedAsync();
     }
 
-    /// <summary>Suscribe hasta cincuenta cargas propias, sin recibir autoridad desde el cliente.</summary>
+    /// <summary>
+    /// Suscribe hasta cincuenta cargas propias, sin recibir autoridad desde el cliente.
+    /// </summary>
     public async Task Subscribe(GetImportProgressRequestDto request)
     {
         var session =

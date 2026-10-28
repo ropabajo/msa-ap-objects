@@ -5,7 +5,9 @@ using Ropabajo.Church.Sanluis.Objects.Application.Imports;
 
 namespace Ropabajo.Church.Sanluis.Objects.Application.Features.Imports.Commands.CreateImportProgressTicket;
 
-/// <summary>Prepara acceso únicamente después de verificar la sesión y su iglesia.</summary>
+/// <summary>
+/// Prepara acceso únicamente después de verificar la sesión y su iglesia.
+/// </summary>
 public sealed class CreateImportProgressTicketCommandHandler(
     IImportActor actor,
     IImportProgressTicketIssuer issuer,
@@ -33,8 +35,8 @@ public sealed class CreateImportProgressTicketCommandHandler(
             grant is null
                 ? Result.Failure<CreateImportProgressTicketResponseDto>(
                     new Error(
-                        "IMPORT_PROGRESS_UNAVAILABLE",
-                        "No se pudo iniciar el seguimiento. Vuelve a intentarlo.",
+                        ImportValidationCodes.ProgressUnavailable,
+                        ImportValidationMessages.ProgressUnavailable,
                         ErrorType.Unavailable
                     )
                 )

@@ -5,9 +5,16 @@ namespace Ropabajo.Church.Sanluis.Objects.Application.Features.Imports.Queries.L
 /// </summary>
 public sealed class ListCombinedImportsItemResponseDto
 {
-    /// <summary>Versión confirmada; permite descartar actualizaciones recibidas fuera de orden.</summary>
+    /// <summary>
+    /// Versión confirmada; permite descartar actualizaciones recibidas fuera de orden.
+    /// </summary>
+    /// <example>3</example>
     public long Version { get; set; }
-    /// <summary>Fecha UTC del último cambio confirmado de la carga.</summary>
+
+    /// <summary>
+    /// Fecha UTC del último cambio confirmado de la carga.
+    /// </summary>
+    /// <example>2026-10-28T05:30:00Z</example>
     public DateTime UpdatedAt { get; set; }
 
     /// <summary>
@@ -69,5 +76,4 @@ public sealed class ListCombinedImportsItemResponseDto
     /// </summary>
     /// <example>operador-dev</example>
     public string User { get; set; } = string.Empty;
-
 }

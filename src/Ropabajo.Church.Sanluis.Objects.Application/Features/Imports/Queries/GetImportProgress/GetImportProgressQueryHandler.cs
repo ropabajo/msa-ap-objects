@@ -4,7 +4,9 @@ using Ropabajo.Church.Sanluis.Objects.Application.Imports;
 
 namespace Ropabajo.Church.Sanluis.Objects.Application.Features.Imports.Queries.GetImportProgress;
 
-/// <summary>Comprueba propiedad e iglesia antes de entregar contadores.</summary>
+/// <summary>
+/// Comprueba propiedad e iglesia antes de entregar contadores.
+/// </summary>
 public sealed class GetImportProgressQueryHandler(IImportProgressReader reader)
     : IRequestHandler<GetImportProgressQuery, Result<GetImportProgressResponseDto>>
 {
@@ -21,7 +23,11 @@ public sealed class GetImportProgressQueryHandler(IImportProgressReader reader)
         return rows.Count == query.LoadCodes.Length
             ? new GetImportProgressResponseDto { Items = rows }
             : Result.Failure<GetImportProgressResponseDto>(
-                new Error("IMPORT_NOT_FOUND", "La carga no está disponible.", ErrorType.NotFound)
+                new Error(
+                    ImportValidationCodes.NotFound,
+                    ImportValidationMessages.NotFound,
+                    ErrorType.NotFound
+                )
             );
     }
 }

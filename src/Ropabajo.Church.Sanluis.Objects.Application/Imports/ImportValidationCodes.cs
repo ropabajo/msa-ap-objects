@@ -85,4 +85,18 @@ public static class ImportValidationCodes
     /// </summary>
     public const string StateInvalid = "IMPORT_STATE_INVALID";
 
+    /// <summary>
+    /// Contexto autenticado requerido para consultar el avance.
+    /// </summary>
+    public const string RequesterRequired = "IMPORT_REQUESTER_REQUIRED";
+
+    /// <summary>
+    /// Identificadores válidos, distintos y acotados de la suscripción.
+    /// </summary>
+    public const string LoadCodesValid = "IMPORT_PROGRESS_CODES_INVALID";
+
+    /// <summary>
+    /// No se pudo preparar una conexión autorizada de avance.
+    /// </summary>
+    public const string ProgressUnavailable = "IMPORT_PROGRESS_UNAVAILABLE";
 }
