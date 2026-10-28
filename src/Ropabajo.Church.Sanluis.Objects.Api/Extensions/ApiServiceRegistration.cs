@@ -1,4 +1,5 @@
 using Ropabajo.Churc.Sanluis.Framework.Authz;
+using Ropabajo.Church.Sanluis.Objects.Api.Realtime;
 using Ropabajo.Church.Sanluis.Objects.Api.Filters;
 using Ropabajo.Church.Sanluis.Objects.Infraestructure.FileJobs;
 
@@ -20,6 +21,7 @@ public static class ApiServiceRegistration
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
+        services.AddImportProgress(environment);
         services.AddScoped<FileJobExceptionFilter>();
         services.AddControllers(options => options.Conventions.Add(new ImportControllerConvention(environment.IsEnvironment("Local"))));
         var runtime = configuration.GetSection("FileJobs").Get<FileJobsRuntimeSettings>() ?? new FileJobsRuntimeSettings();

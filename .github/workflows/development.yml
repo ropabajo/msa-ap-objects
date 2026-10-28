@@ -43,7 +43,7 @@ jobs:
     outputs:
       digest: ${{ steps.image.outputs.digest }}
     env:
-      FRAMEWORK_REVISION: bb12d228fd8a76e5e76c90271ec3618a137860f9
+      FRAMEWORK_REVISION: 3e8a19272f9fc75ee94fe553f976c34adba6ae15
       IMAGE_TAG: ropbajo/msa-ap-objects:development-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
       DOTNET_CLI_TELEMETRY_OPTOUT: '1'
     services:
@@ -136,7 +136,7 @@ jobs:
               <add key="nuget.org" value="https://api.nuget.org/v3/index.json"/>
             </packageSources>
             <packageSourceMapping>
-              <packageSource key="LocalAuthz"><package pattern="Ropabajo.Churc.Sanluis.Framework.Authz"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Primitives"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Mediator"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Core"/><package pattern="Ropabajo.Churc.Sanluis.Framework.RabbitMq"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Files"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Integration"/><package pattern="Naza.Church.BulkLoads.Contracts"/></packageSource>
+              <packageSource key="LocalAuthz"><package pattern="Ropabajo.Churc.Sanluis.Framework.Authz"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Primitives"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Mediator"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Core"/><package pattern="Ropabajo.Churc.Sanluis.Framework.RabbitMq"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Files"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Integration"/><package pattern="Ropabajo.Churc.Sanluis.Framework.Realtime"/><package pattern="Naza.Church.BulkLoads.Contracts"/></packageSource>
               <packageSource key="GitHub"><package pattern="Ropabajo.*"/></packageSource>
               <packageSource key="nuget.org"><package pattern="*"/></packageSource>
             </packageSourceMapping>
@@ -151,10 +151,11 @@ jobs:
           dotnet test "$authz_tests" --no-restore -c Release --logger 'trx;LogFileName=authz.trx' --results-directory "$image_dir/tests" -m:2
           dotnet pack "$authz_project" --no-restore -c Release -o "$LOCAL_AUTHZ_FEED" -m:2
           test -f "$LOCAL_AUTHZ_FEED/Ropabajo.Churc.Sanluis.Framework.Authz.1.1.4-dev.2.nupkg"
-          for project in primitives/Ropabajo.Churc.Sanluis.Framework.Primitives mediator/Ropabajo.Churc.Sanluis.Framework.Mediator core/Ropabajo.Churc.Sanluis.Framework.Core rabbitmq/Ropabajo.Churc.Sanluis.Framework.RabbitMq files/Ropabajo.Churc.Sanluis.Framework.Files integration/Ropabajo.Churc.Sanluis.Framework.Integration; do
+          for project in primitives/Ropabajo.Churc.Sanluis.Framework.Primitives mediator/Ropabajo.Churc.Sanluis.Framework.Mediator core/Ropabajo.Churc.Sanluis.Framework.Core rabbitmq/Ropabajo.Churc.Sanluis.Framework.RabbitMq files/Ropabajo.Churc.Sanluis.Framework.Files integration/Ropabajo.Churc.Sanluis.Framework.Integration realtime/Ropabajo.Churc.Sanluis.Framework.Realtime; do
             dotnet restore "$framework_root/$project" --configfile "$RUNNER_TEMP/public.config" --disable-parallel
             dotnet pack "$framework_root/$project" --no-restore -c Release -o "$LOCAL_AUTHZ_FEED" -m:2
           done
+          dotnet test "$framework_root/realtime/Realtime.Tests" -c Release --logger 'trx;LogFileName=realtime.trx' --results-directory "$image_dir/tests" -m:2
           export OBJECTS_SCHEMA_INIT_SQL="$GITHUB_WORKSPACE/.schema/docker-compose/mysql-db-object/db-init/init.sql"
           dotnet restore "$GITHUB_WORKSPACE/.bulk-contracts/contracts/Naza.Church.BulkLoads.Contracts" --configfile "$RUNNER_TEMP/public.config" --disable-parallel
           dotnet pack "$GITHUB_WORKSPACE/.bulk-contracts/contracts/Naza.Church.BulkLoads.Contracts" --no-restore -c Release -o "$LOCAL_AUTHZ_FEED" -m:2
@@ -275,7 +276,7 @@ jobs:
         with:
           repository: ropabajo/k8s-recipes
           # Shared deployer and YAML recipes reviewed together at this exact commit.
-          ref: b7770774caf92c353e4a875aace547c0ed1e684b
+          ref: 40cd3c770a9c49c1fdb316ece35cd909b2e3cffa
           token: ${{ secrets.TOKEN }}
           path: .recipes
           persist-credentials: false

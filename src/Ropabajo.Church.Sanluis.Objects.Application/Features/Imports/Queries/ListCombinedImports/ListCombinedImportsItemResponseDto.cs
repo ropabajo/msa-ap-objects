@@ -5,6 +5,11 @@ namespace Ropabajo.Church.Sanluis.Objects.Application.Features.Imports.Queries.L
 /// </summary>
 public sealed class ListCombinedImportsItemResponseDto
 {
+    /// <summary>Versión confirmada; permite descartar actualizaciones recibidas fuera de orden.</summary>
+    public long Version { get; set; }
+    /// <summary>Fecha UTC del último cambio confirmado de la carga.</summary>
+    public DateTime UpdatedAt { get; set; }
+
     /// <summary>
     /// Código público de carga.
     /// </summary>

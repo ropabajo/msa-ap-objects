@@ -45,6 +45,7 @@ public static class InfrastructureServiceRegistration
         services.AddOutboxContract<ImportRowRetryRequested>("bulk.row.retry-requested.v1");
         services.AddScoped<IImportActor, HttpImportActor>(); services.AddScoped<IImportRepository, ImportRepository>();
         services.AddScoped<CombinedImportService>();
+        services.AddScoped<IImportProgressReader, ImportProgressReader>();
         services.AddScoped<IIntegrationCleanupParticipant, ImportCleanupParticipant>();
 
         services.AddScoped(typeof(IBaseRepository<>), typeof(RepositoryBase<>));

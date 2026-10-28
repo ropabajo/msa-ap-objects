@@ -11,6 +11,6 @@ internal sealed class ImportControllerConvention(bool local) : IApplicationModel
     public void Apply(ApplicationModel application)
     {
         var hidden = local ? typeof(BulkLoadController) : typeof(CombinedImportController);
-        foreach (var controller in application.Controllers.Where(x => x.ControllerType.AsType() == hidden).ToArray()) application.Controllers.Remove(controller);
+        foreach (var controller in application.Controllers.Where(x => x.ControllerType.AsType() == hidden || (!local && x.ControllerType.AsType() == typeof(ImportProgressController))).ToArray()) application.Controllers.Remove(controller);
     }
 }

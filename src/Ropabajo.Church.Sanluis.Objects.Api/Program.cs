@@ -1,4 +1,5 @@
 using Ropabajo.Church.Sanluis.Objects.Api.Extensions;
+using Ropabajo.Church.Sanluis.Objects.Api.Realtime;
 using Ropabajo.Church.Sanluis.Objects.Application;
 using Ropabajo.Church.Sanluis.Objects.Infraestructure;
 using Ropabajo.Churc.Sanluis.Framework.Authz;
@@ -20,7 +21,9 @@ builder.WebHost.UseBase();
 
 var app = builder.Build();
 app.UseBase();
+app.UseImportProgress();
 app.UseKeycloak();
+app.MapImportProgress();
 app.UseBaseSwagger();
 //app.UseAllElasticApm(app.Configuration);
 app.Run();
