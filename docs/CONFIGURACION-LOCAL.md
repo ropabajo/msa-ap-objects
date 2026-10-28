@@ -230,3 +230,9 @@ El contenido del archivo subido mantiene su ciclo propio de Objects.
 La API rechaza recuperar una carga con más de treinta días. No hay settings ni
 conexiones RabbitMq adicionales. IntegrationCleanup registra solo conteos.
 Aplicar primero 20261028-integracion-retencion con respaldo restaurado.
+
+La migración DEV 20261028 quedó aplicada con conservación de filas y ensayo
+up/down en los tres respaldos restaurados. La plantilla compacta se publica en
+una clave v2 nueva y solo se cambia PLANTILLA del formato existente; no se ejecuta
+init.sql ni se reemplaza el archivo v1. El worker comparte el esquema español
+y la limpieza común. Ver k8s-recipes/environments/church-dev/LIMPIEZA-INTEGRACION.md.
