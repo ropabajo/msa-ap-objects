@@ -99,6 +99,7 @@ public sealed class SpanishImportSchemaTests : IAsyncLifetime
             Assert.Equal(1062, duplicate.Number);
         }
         Assert.Equal(before, await Snapshot(translated));
+        await Execute("ALTER TABLE integracion_entrada ADD COLUMN CODIGO_CORRELACION varchar(36) NULL");
         await using (var context = Context())
         {
             var receipt = await context.Set<InboxReceipt>().AsNoTracking().SingleAsync();
@@ -112,8 +113,10 @@ public sealed class SpanishImportSchemaTests : IAsyncLifetime
                 Assert.True((await context.Set<ImportRow>().SingleAsync()).Id > 0);
             }
         }
+        await Execute("ALTER TABLE integracion_entrada DROP COLUMN CODIGO_CORRELACION");
         await Script(down); Assert.Equal(before, await Snapshot(oldColumns));
         await Script(up); Assert.Equal(before, await Snapshot(translated));
+        await Execute("ALTER TABLE integracion_entrada ADD COLUMN CODIGO_CORRELACION varchar(36) NULL");
         // A re-delivery after migration does not execute the business callback again.
         await using (var context = Context())
         {

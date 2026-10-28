@@ -94,6 +94,8 @@ public sealed class CombinedImportService
         if (row.Status is not ("member_observed" or "person_observed"))
             return Failure<bool>(ImportValidationCodes.RetryUnavailable, ImportValidationMessages.RetryUnavailable, ErrorType.Conflict);
         var load = await _loads.GetOneAsync(x => x.Code == loadCode && !x.Delete, token) ?? throw new InvalidDataException("Missing registered import.");
+        if (DateTime.SpecifyKind(load.Date, DateTimeKind.Utc) <= DateTime.UtcNow - IntegrationRetention.RecoveryWindow)
+            return Failure<bool>(ImportValidationCodes.RetryUnavailable, "El plazo de recuperación de esta carga terminó. Registra una nueva carga.", ErrorType.Conflict);
         var message = new ImportRowRetryRequested { MessageId = requestId, OccurredAt = DateTime.SpecifyKind(load.Date, DateTimeKind.Utc), CorrelationId = rowCode, RowCode = rowCode,
             Scope = JsonSerializer.Deserialize<ImportScope>(authorization.Value.ScopeJson, Json) ?? throw new InvalidDataException("Invalid stored import scope.") };
         // Preserve payload on an HTTP retry, including its original OccurredAt.

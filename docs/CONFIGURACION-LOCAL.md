@@ -217,3 +217,16 @@ ejecutar init.sql ni DDL al arrancar. La migración ya está aplicada en church-
 La adopción es explícita por servicio: no crea tablas en otras bases por instalar
 la librería. Procedimiento, comprobaciones y reversión:
 [operador común](https://github.com/ropabajo/k8s-recipes/blob/development/environments/church-dev/MIGRACION-COLUMNAS-IMPORTACION.md).
+
+## Retención de importaciones completadas
+
+Integration 1.0.0-dev.3 ejecuta el mantenimiento común cada hora. Una correlación
+cerrada debe llevar treinta días sin nuevas recepciones/publicaciones; se eliminan
+hasta 500 registros por ejecución y se conservan pendientes/fallidos/en uso.
+Las filas exitosas pierden los JSON de recuperación y FILA del resultado antiguo;
+conservan estado, códigos, conteos, ámbito autorizado e historial resumido. Las
+personas, miembros y archivos de almacenamiento no se eliminan por este proceso.
+El contenido del archivo subido mantiene su ciclo propio de Objects.
+La API rechaza recuperar una carga con más de treinta días. No hay settings ni
+conexiones RabbitMq adicionales. IntegrationCleanup registra solo conteos.
+Aplicar primero 20261028-integracion-retencion con respaldo restaurado.

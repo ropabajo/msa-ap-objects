@@ -43,7 +43,7 @@ jobs:
     outputs:
       digest: ${{ steps.image.outputs.digest }}
     env:
-      FRAMEWORK_REVISION: 6ab2e834262a68c17930bd3b1b2360f7f15e5ee9
+      FRAMEWORK_REVISION: bb12d228fd8a76e5e76c90271ec3618a137860f9
       IMAGE_TAG: ropbajo/msa-ap-objects:development-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
       DOTNET_CLI_TELEMETRY_OPTOUT: '1'
     services:
@@ -91,7 +91,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ropabajo/docker-kubernetes-configs
-          ref: f77e49f7505279c2b37af6c7fcbb287a79e99b2f
+          ref: da389fd9bc9295e0bf960b0f381e382c8114bd80
           token: ${{ secrets.TOKEN }}
           path: .schema
           persist-credentials: false
@@ -107,7 +107,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: naza-cross/msa-nc-bulkload-worker
-          ref: 4cef8a6a6efe90ccd061a46602b13a846e03c89c
+          ref: e802297744f9538f07438449294df3304ff8a6e9
           token: ${{ secrets.TOKEN }}
           path: .bulk-contracts
           persist-credentials: false
