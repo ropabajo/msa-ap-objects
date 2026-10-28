@@ -13,6 +13,16 @@ using Xunit;
 public sealed class ImportProgressPersistenceTests
 {
     [Fact]
+    public void Rest_snapshot_keeps_confirmed_version_and_utc_timestamp()
+    {
+        var mapper = new AutoMapper.MapperConfiguration(config => config.AddProfile<Ropabajo.Church.Sanluis.Objects.Application.Features.Imports.Queries.ListCombinedImports.ListCombinedImportsMappingProfile>(), Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance).CreateMapper();
+        var metadata = new ImportLoad { Version = 8, UpdatedAt = new DateTime(2026, 10, 28, 0, 0, 0, DateTimeKind.Unspecified) };
+        var result = mapper.Map<Ropabajo.Church.Sanluis.Objects.Application.Features.Imports.Queries.ListCombinedImports.ListCombinedImportsItemResponseDto>(new ImportLoadView(new BulkLoad(), metadata));
+        Assert.Equal(8, result.Version);
+        Assert.Equal(DateTimeKind.Utc, result.UpdatedAt.Kind);
+    }
+
+    [Fact]
     public async Task Reader_projects_only_owned_church_loads_and_ignores_deleted_and_unrequested_loads()
     {
         var sql = new MySqlConnectionStringBuilder(

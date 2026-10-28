@@ -22,7 +22,7 @@ public static class ImportProgressRegistration
         services.AddConnectionTickets();
         services.AddSignalR(options =>
         {
-            options.MaximumReceiveMessageSize = 4096;
+            options.MaximumReceiveMessageSize = 8192;
             options.MaximumParallelInvocationsPerClient = 1;
             options.EnableDetailedErrors = false;
         });

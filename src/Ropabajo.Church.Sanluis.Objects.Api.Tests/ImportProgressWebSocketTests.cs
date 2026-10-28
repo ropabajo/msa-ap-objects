@@ -153,7 +153,7 @@ public sealed class ImportProgressWebSocketTests
 
     [Theory]
     [InlineData(0)]
-    [InlineData(51)]
+    [InlineData(101)]
     [InlineData(2)]
     public async Task Empty_oversized_or_duplicate_subscriptions_do_not_read_persistence(int size)
     {

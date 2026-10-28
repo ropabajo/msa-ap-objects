@@ -54,7 +54,7 @@ public sealed class ImportProgressHub : Hub
     }
 
     /// <summary>
-    /// Suscribe hasta cincuenta cargas propias, sin recibir autoridad desde el cliente.
+    /// Suscribe hasta cien cargas propias, sin recibir autoridad desde el cliente.
     /// </summary>
     public async Task Subscribe(GetImportProgressRequestDto request)
     {

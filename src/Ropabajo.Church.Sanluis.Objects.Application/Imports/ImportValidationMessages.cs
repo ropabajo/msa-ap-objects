@@ -103,7 +103,7 @@ public static class ImportValidationMessages
     /// Identificadores válidos, distintos y acotados de la suscripción.
     /// </summary>
     public const string LoadCodesValid =
-        "El campo Cargas debe contener entre una y cincuenta cargas distintas y válidas.";
+        "El campo Cargas debe contener entre una y cien cargas distintas y válidas.";
 
     /// <summary>
     /// No se pudo preparar una conexión autorizada de avance.

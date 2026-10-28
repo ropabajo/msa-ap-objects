@@ -9,10 +9,10 @@ namespace Ropabajo.Church.Sanluis.Objects.Application.Features.Imports.Queries.G
 public sealed class GetImportProgressRequestDto
 {
     /// <summary>
-    /// Códigos públicos, sin duplicados; máximo cincuenta.
+    /// Códigos públicos, sin duplicados; máximo cien.
     /// </summary>
     [Required(ErrorMessage = ImportValidationMessages.LoadCodesValid)]
     [MinLength(1, ErrorMessage = ImportValidationMessages.LoadCodesValid)]
-    [MaxLength(50, ErrorMessage = ImportValidationMessages.LoadCodesValid)]
+    [MaxLength(100, ErrorMessage = ImportValidationMessages.LoadCodesValid)]
     public Guid[] LoadCodes { get; set; } = [];
 }

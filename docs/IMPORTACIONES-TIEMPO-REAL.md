@@ -14,7 +14,7 @@ crea tablas, eventos, clientes Keycloak ni secciones de configuración.
 2. Conectar a `/v2/churches/{churchCode}/imports/progress?ticket=<nonce>` mediante
    WebSocket, sin negociación/long polling. El nonce aleatorio de un uso caduca
    en 20 segundos y exige el mismo Origin/ruta. El JWT no aparece en la URL.
-3. Invocar `Subscribe` con `{ "loadCodes": ["<guid>"] }`, máximo 50 distintos.
+3. Invocar `Subscribe` con `{ "loadCodes": ["<guid>"] }`, máximo 100 distintos.
    La autoridad procede exclusivamente del ticket preparado por el servidor.
    Si una carga no pertenece al usuario/iglesia, rechaza la suscripción completa
    sin distinguir una carga inexistente de una ajena.
@@ -34,7 +34,7 @@ La sesión dura como máximo cinco minutos, acotada además por la expiración d
 JWT. La reconexión exige un ticket nuevo y repite las políticas HTTP/IAM. Una
 revocación de permisos se vuelve a comprobar al renovar; la ventana máxima de
 una sesión existente es cinco minutos. Límites: 128 conexiones por proceso, tres
-por propietario/iglesia, mensajes entrantes de 4096 bytes. No habilitar otra
+por propietario/iglesia, mensajes entrantes de 8192 bytes. No habilitar otra
 réplica sin un almacén de tickets compartido/afinidad y un backplane SignalR.
 
 La parte técnica reutilizable está en ap-framework `Realtime` 1.0.0-dev.1.

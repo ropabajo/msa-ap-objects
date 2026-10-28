@@ -19,7 +19,7 @@ public sealed class GetImportProgressQueryValidator : AbstractValidator<GetImpor
             .WithMessage(ImportValidationMessages.RequesterRequired);
         RuleFor(x => x.LoadCodes)
             .Must(x =>
-                x is { Length: > 0 and <= 50 }
+                x is { Length: > 0 and <= 100 }
                 && x.All(id => id != Guid.Empty)
                 && x.Distinct().Count() == x.Length
             )
