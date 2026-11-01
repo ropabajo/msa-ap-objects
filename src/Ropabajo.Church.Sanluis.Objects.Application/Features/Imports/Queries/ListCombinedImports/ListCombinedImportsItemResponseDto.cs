@@ -48,7 +48,7 @@ public sealed class ListCombinedImportsItemResponseDto
     public string? ErrorCode { get; set; } = null;
 
     /// <summary>
-    /// Fecha UTC de registro.
+    /// Fecha UTC de registro, serializada con sufijo Z para su conversión local en la interfaz.
     /// </summary>
     /// <example>2026-10-26T20:00:00Z</example>
     public DateTime Date { get; set; } = default;

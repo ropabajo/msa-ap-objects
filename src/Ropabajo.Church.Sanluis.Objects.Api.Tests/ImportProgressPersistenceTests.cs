@@ -12,6 +12,42 @@ using Xunit;
 
 public sealed class ImportProgressPersistenceTests
 {
+    [Theory]
+    [InlineData("2026-10-31T23:06:00", "31/10/2026 18:06")]
+    [InlineData("2026-10-31T04:17:00", "30/10/2026 23:17")]
+    public void Rest_dates_preserve_persisted_utc_instants_and_render_in_the_same_local_zone(
+        string persistedRegistration,
+        string expectedLimaRegistration
+    )
+    {
+        var mapper = new AutoMapper.MapperConfiguration(config => config.AddProfile<Ropabajo.Church.Sanluis.Objects.Application.Features.Imports.Queries.ListCombinedImports.ListCombinedImportsMappingProfile>(), Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance).CreateMapper();
+        // MySQL datetime preserves the UTC clock value but returns an Unspecified kind.
+        var registered = DateTime.Parse(persistedRegistration, System.Globalization.CultureInfo.InvariantCulture);
+        var updated = registered.AddSeconds(5);
+        Assert.Equal(DateTimeKind.Unspecified, registered.Kind);
+        var result = mapper.Map<Ropabajo.Church.Sanluis.Objects.Application.Features.Imports.Queries.ListCombinedImports.ListCombinedImportsItemResponseDto>(
+            new ImportLoadView(new BulkLoad { Date = registered }, new ImportLoad { UpdatedAt = updated })
+        );
+
+        Assert.Equal(DateTimeKind.Utc, result.Date.Kind);
+        Assert.Equal(DateTimeKind.Utc, result.UpdatedAt.Kind);
+        Assert.Equal(registered.Ticks, result.Date.Ticks);
+        Assert.Equal(updated.Ticks, result.UpdatedAt.Ticks);
+        using var json = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(
+            result, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)
+        ));
+        var registrationJson = json.RootElement.GetProperty("date").GetString()!;
+        var updateJson = json.RootElement.GetProperty("updatedAt").GetString()!;
+        Assert.EndsWith("Z", registrationJson);
+        Assert.EndsWith("Z", updateJson);
+        var registrationInstant = DateTimeOffset.Parse(registrationJson, System.Globalization.CultureInfo.InvariantCulture);
+        var updateInstant = DateTimeOffset.Parse(updateJson, System.Globalization.CultureInfo.InvariantCulture);
+        Assert.Equal(TimeSpan.FromSeconds(5), updateInstant - registrationInstant);
+        var lima = TimeZoneInfo.FindSystemTimeZoneById("America/Lima");
+        Assert.Equal(expectedLimaRegistration, TimeZoneInfo.ConvertTime(registrationInstant, lima)
+            .ToString("dd/MM/yyyy HH:mm", System.Globalization.CultureInfo.InvariantCulture));
+    }
+
     [Fact]
     public void Rest_snapshot_keeps_confirmed_version_and_utc_timestamp()
     {

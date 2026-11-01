@@ -44,6 +44,19 @@ stateCode, pageNumber y pageSize; estado vacío conserva la semántica Todos. La
 paginación mantiene sus límites actuales (página desde 1 y tamaño entre 1 y 100).
 Una carga ajena se consulta como no encontrada, sin revelar que existe.
 
+### Fechas del listado
+
+`date` (registro) y `updatedAt` (último cambio) representan instantes UTC y se
+serializan en ISO 8601 con `Z`. Por ejemplo, `2026-10-31T23:06:00Z` se muestra
+como `31/10/2026 18:06` en un navegador con zona America/Lima. La interfaz aplica
+la misma zona local a ambas columnas y a los cambios recibidos en tiempo real.
+
+El registro combinado guarda `DateTime.UtcNow`. MySQL `datetime` conserva ese
+valor, pero lo devuelve con `DateTimeKind.Unspecified`; el mapping REST debe
+restablecer `Utc` para ambas fechas sin desplazar su valor. No usar
+`ToUniversalTime()` sobre ese valor sin zona ni restar cinco horas en frontend.
+La corrección se aplica al leer cargas existentes y nuevas, sin actualizar SQL.
+
 El POST de recuperación recibe requestId. Application decide el paso recuperable
 sin repetir Persona si ya está confirmada. Una fila o carga ajena/inexistente
 produce 404; un estado no recuperable produce 409.
@@ -81,6 +94,10 @@ CombinedImportHttpContractTests ejecuta el controller con sus perfiles de mappin
 AddObjectsApi y los filtros MVC reales. Comprueba autoridad de la ruta frente a
 body/query, paginación, páginas vacías, sobres 202, ApiExplorer, validación 400,
 conflicto 409 y traducción segura de excepciones 403/413/500/503.
+
+ImportProgressPersistenceTests también reproduce valores `datetime` sin Kind y
+comprueba el JSON con `Z`, los instantes originales y su visualización en Lima,
+incluido el cambio de día. La regresión fallaba antes del mapping de `date`.
 
 El despachador y las políticas de esos fixtures son dobles controlados; no prueban
 IAM, SQL o una sesión real en DEV. La suite existente conserva por separado sus

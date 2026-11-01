@@ -17,7 +17,9 @@ public sealed class ListCombinedImportsMappingProfile : Profile
         CreateMap<ImportLoadView, ListCombinedImportsItemResponseDto>()
             .IncludeMembers(x => x.Load, x => x.Metadata);
         CreateMap<Ropabajo.Church.Sanluis.Objects.Domain.Entities.BulkLoad, ListCombinedImportsItemResponseDto>(MemberList.None)
-            .ForMember(x => x.BulkLoadCode, x => x.MapFrom(y => y.Code));
+            .ForMember(x => x.BulkLoadCode, x => x.MapFrom(y => y.Code))
+            // MySQL datetime conserva el valor UTC, pero no DateTime.Kind.
+            .ForMember(x => x.Date, x => x.MapFrom(y => DateTime.SpecifyKind(y.Date, DateTimeKind.Utc)));
         CreateMap<Ropabajo.Church.Sanluis.Objects.Domain.Imports.ImportLoad, ListCombinedImportsItemResponseDto>(MemberList.None)
             .ForMember(x => x.UpdatedAt, x => x.MapFrom(y => DateTime.SpecifyKind(y.UpdatedAt, DateTimeKind.Utc)));
     }
