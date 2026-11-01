@@ -38,6 +38,17 @@ public class CreateObjectCommandHandler : CommandHandler, IRequestHandler<Create
 
     public async Task Handle(CreateObjectCommand command, CancellationToken cancellationToken)
     {
+        var requestedPath = Uri.UnescapeDataString(command.Path ?? "").TrimStart('/');
+        if (requestedPath.Equals("temporary-exports", StringComparison.OrdinalIgnoreCase)
+            || requestedPath.StartsWith("temporary-exports/", StringComparison.OrdinalIgnoreCase)
+            || requestedPath.Equals("file-jobs", StringComparison.OrdinalIgnoreCase)
+            || requestedPath.StartsWith("file-jobs/", StringComparison.OrdinalIgnoreCase)
+            || requestedPath.Contains("..") || requestedPath.Contains('\\'))
+        {
+            await _bus.RaiseAsync(new Notification("403", "La ruta está reservada para exportaciones temporales.", NotificationType.BadRequest), cancellationToken);
+            return;
+        }
+
         const string cacheControl = "max-age=86400,s-maxage=86400,proxy-revalidate"; /*"none"*/
 
         string extension = Path.GetExtension(command.FileName);

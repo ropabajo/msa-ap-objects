@@ -1,4 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Ropabajo.Church.Sanluis.Objects.Infraestructure.FileJobs;
+using Microsoft.EntityFrameworkCore;
+using Naza.Church.BulkLoads.Contracts;
+using Ropabajo.Church.Sanluis.Objects.Application.Imports;
+using Ropabajo.Church.Sanluis.Objects.Infraestructure.Imports;
+using Ropabajo.Churc.Sanluis.Framework.Integration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Ropabajo.Churc.Sanluis.Framework.RabbitMq;
@@ -9,21 +14,39 @@ using System.Reflection;
 
 namespace Ropabajo.Church.Sanluis.Objects.Infraestructure;
 
+/// <summary>
+/// Registra persistencia e integraciones de Objects con configuración explícita.
+/// </summary>
 public static class InfrastructureServiceRegistration
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services)
+    /// <summary>
+    /// Valida el destino Local y configura las dependencias sin abrir conexiones.
+    /// </summary>
+    /// <param name="services">Colección de servicios del aplicativo.</param>
+    /// <param name="configuration">Configuración efectiva del ambiente.</param>
+    /// <param name="environmentName">Nombre del ambiente ASP.NET Core.</param>
+    /// <returns>Colección con las dependencias de infraestructura registradas.</returns>
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration, string environmentName)
     {
-        IConfiguration configuration;
-        using (var serviceProvider = services.BuildServiceProvider())
-        {
-            configuration = serviceProvider.GetService<IConfiguration>();
-        }
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
+        LocalDatabaseConfiguration.Validate(configuration, environmentName);
+        var serverVersion = string.Equals(environmentName, "Local", StringComparison.OrdinalIgnoreCase)
+            ? new Version(5, 7, 44) : Version.Parse(configuration["Database:ServerVersion"] ?? "8.0.21");
 
         services.AddDbContext<DatabaseContext>(options =>
          options.UseMySql(configuration.GetConnectionString("DefaultConnection"),
-             new MySqlServerVersion(new Version(8, 0, 21))));
+             new MySqlServerVersion(serverVersion)));
 
         services.AddRabbitMq(Assembly.GetExecutingAssembly());
+        services.AddFileJobs(configuration);
+        services.AddIntegrationJournal<DatabaseContext>((environmentName.Equals("Local", StringComparison.OrdinalIgnoreCase) || environmentName.Equals("Production", StringComparison.OrdinalIgnoreCase)));
+        services.AddOutboxContract<BulkImportRegistered>("bulk.load.registered.v1");
+        services.AddOutboxContract<ImportRowRetryRequested>("bulk.row.retry-requested.v1");
+        services.AddScoped<IImportActor, HttpImportActor>(); services.AddScoped<IImportRepository, ImportRepository>();
+        services.AddScoped<CombinedImportService>();
+        services.AddScoped<IImportProgressReader, ImportProgressReader>();
+        services.AddScoped<IIntegrationCleanupParticipant, ImportCleanupParticipant>();
 
         services.AddScoped(typeof(IBaseRepository<>), typeof(RepositoryBase<>));
         services.AddScoped<IObjectRepository, ObjectRepository>();

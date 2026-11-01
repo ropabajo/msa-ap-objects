@@ -1,0 +1,13 @@
+name: Combined import - publish verified DEV API candidate
+on:
+  push:
+    branches: [codex/persons-members-import]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  publish-dev-candidate:
+    uses: ./.github/workflows/development.yml
+    with:
+      publish_only: true
+    secrets: inherit
