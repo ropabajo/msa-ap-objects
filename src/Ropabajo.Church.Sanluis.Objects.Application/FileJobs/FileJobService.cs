@@ -346,7 +346,7 @@ public sealed partial class FileJobService
     private static bool SameLease(FileJob job, string leaseToken) => leaseToken is { Length: 64 } && job.LeaseHash is not null
         && CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(job.LeaseHash), Encoding.ASCII.GetBytes(Hash(leaseToken)));
     private static bool ValidRequester(FileJobRequester requester) => requester.ChurchCode != Guid.Empty && Regex.IsMatch(requester.OwnerHash ?? "", "^[a-f0-9]{64}$");
-    private static bool CanExport(FileJobRequester requester) => requester.Roles.Any(role => role is "MEMBER_VIEW" or "ADMIN");
+    private static bool CanExport(FileJobRequester requester) => requester.Roles.Any(role => role is "MEMBER_VIEW" or "USER_ADMIN" or "ADMIN");
     private static bool Active(string state) => state is "queued" or "running" or "retry_wait" or "cancel_requested";
     private static string Hash(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
     private static DateTime Min(DateTime first, DateTime second) => first <= second ? first : second;

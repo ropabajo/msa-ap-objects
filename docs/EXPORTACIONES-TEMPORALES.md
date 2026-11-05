@@ -26,6 +26,12 @@ HTTP 202 y el sobre Result; fallos esperados se representan con ProblemDetails.
 El historial se limita al usuario, iglesia y ambiente autorizados. La firma es
 renovable y temporal; no se guarda como enlace permanente.
 
+La exportación de miembros admite `MEMBER_VIEW`, `USER_ADMIN` (Administrador de
+Sede) y `ADMIN` entre los roles efectivos del contexto autorizado. No requiere
+asignar también el rol Miembro al administrador. Crear, consultar y firmar la
+descarga conservan el aislamiento por usuario, iglesia activa y ambiente; un
+rol de otra iglesia no habilita esta operación en el contexto actual.
+
 El worker utiliza `/internal/v1/file-jobs` con su identidad técnica Keycloak y
 lease vigente. RabbitMQ entrega referencias pequeñas, sin filas ni JWT. La outbox
 publica con confirmación; el consumidor aplica ACK solo después de una decisión
