@@ -95,6 +95,14 @@ jobs:
           token: ${{ secrets.TOKEN }}
           path: .schema
           persist-credentials: false
+      - name: Checkout session authorization without replacing transport packages
+        uses: actions/checkout@v4
+        with:
+          repository: robertpablo/ap-framework
+          ref: 964f4e7c76f9898c1a2e0306673374a5bb09172f
+          token: ${{ secrets.TOKEN }}
+          path: .authz
+          persist-credentials: false
       - name: Checkout canonical DEV broker topology
         uses: actions/checkout@v4
         with:
@@ -145,12 +153,12 @@ jobs:
           # The optional override is for an already provisioned local package feed.
           restore_config="${RESTORE_CONFIG_OVERRIDE:-$RUNNER_TEMP/restore.config}"
           framework_root="$(cd "$GITHUB_WORKSPACE/.framework" && pwd -P)"
-          authz_tests="$framework_root/authz/Ropabajo.Churc.Sanluis.Framework.Authz.Tests/Ropabajo.Churc.Sanluis.Framework.Authz.Tests.csproj"
-          authz_project="$framework_root/authz/Ropabajo.Churc.Sanluis.Framework.Authz/Ropabajo.Churc.Sanluis.Framework.Authz.csproj"
+          authz_tests="$GITHUB_WORKSPACE/.authz/authz/Ropabajo.Churc.Sanluis.Framework.Authz.Tests/Ropabajo.Churc.Sanluis.Framework.Authz.Tests.csproj"
+          authz_project="$GITHUB_WORKSPACE/.authz/authz/Ropabajo.Churc.Sanluis.Framework.Authz/Ropabajo.Churc.Sanluis.Framework.Authz.csproj"
           dotnet restore "$authz_tests" --configfile "$RUNNER_TEMP/public.config" --disable-parallel
           dotnet test "$authz_tests" --no-restore -c Release --logger 'trx;LogFileName=authz.trx' --results-directory "$image_dir/tests" -m:2
           dotnet pack "$authz_project" --no-restore -c Release -o "$LOCAL_AUTHZ_FEED" -m:2
-          test -f "$LOCAL_AUTHZ_FEED/Ropabajo.Churc.Sanluis.Framework.Authz.1.1.4-dev.2.nupkg"
+          test -f "$LOCAL_AUTHZ_FEED/Ropabajo.Churc.Sanluis.Framework.Authz.1.1.5-dev.2.nupkg"
           for project in primitives/Ropabajo.Churc.Sanluis.Framework.Primitives mediator/Ropabajo.Churc.Sanluis.Framework.Mediator core/Ropabajo.Churc.Sanluis.Framework.Core rabbitmq/Ropabajo.Churc.Sanluis.Framework.RabbitMq files/Ropabajo.Churc.Sanluis.Framework.Files integration/Ropabajo.Churc.Sanluis.Framework.Integration realtime/Ropabajo.Churc.Sanluis.Framework.Realtime; do
             dotnet restore "$framework_root/$project" --configfile "$RUNNER_TEMP/public.config" --disable-parallel
             dotnet pack "$framework_root/$project" --no-restore -c Release -o "$LOCAL_AUTHZ_FEED" -m:2
@@ -185,7 +193,7 @@ jobs:
             RabbitMq:(.RabbitMq | {HostName,Port,VirtualHost,UseSsl,UserName:"",Password:""}),
             MinIo:(.MinIo | {Endpoint,UseSsl,BucketName,AccessKey:"",SecretKey:""})
           }' src/Ropabajo.Church.Sanluis.Objects.Api/appsettings.Local.json > "$image_dir/app/appsettings.Local.json"
-          jq -e '.libraries | has("Ropabajo.Churc.Sanluis.Framework.Authz/1.1.4-dev.2")' "$image_dir/app/Ropabajo.Church.Sanluis.Objects.Api.deps.json" > /dev/null
+          jq -e '.libraries | has("Ropabajo.Churc.Sanluis.Framework.Authz/1.1.5-dev.2")' "$image_dir/app/Ropabajo.Church.Sanluis.Objects.Api.deps.json" > /dev/null
           jq -e '.ConnectionStrings.DefaultConnection == "" and .Redis.Database == 1 and .Redis.Password == "" and .Redis.User == "" and .RabbitMq.UserName == "" and .RabbitMq.Password == "" and .MinIo.AccessKey == "" and .MinIo.SecretKey == ""' "$image_dir/app/appsettings.Local.json" > /dev/null
           test "$(find "$image_dir/app" -maxdepth 1 -name 'appsettings*.json' | wc -l)" -eq 2
           cat > "$image_dir/Dockerfile" <<'DOCKER'
@@ -198,7 +206,7 @@ jobs:
           printf '%s\n' '*' '!app/' '!app/**' '!Dockerfile' > "$image_dir/.dockerignore"
           authz_sha=$(sha256sum "$image_dir/app/Ropabajo.Churc.Sanluis.Framework.Authz.dll" | cut -d' ' -f1)
           jq -n --arg source "$(git rev-parse HEAD)" --arg framework "$(git -C .framework rev-parse HEAD)" --arg authz "$authz_sha" \
-            '{sourceCommit:$source,frameworkCommit:$framework,authzAssemblySha256:$authz,authzPackageVersion:"1.1.4-dev.2",sanitizedLocalSettingsIncluded:true,runtimeSecretsRequired:true,redisDatabase:1}' > "$image_dir/provenance.json"
+            '{sourceCommit:$source,frameworkCommit:$framework,authzFrameworkCommit:"964f4e7c76f9898c1a2e0306673374a5bb09172f",authzAssemblySha256:$authz,authzPackageVersion:"1.1.5-dev.2",sanitizedLocalSettingsIncluded:true,runtimeSecretsRequired:true,redisDatabase:1}' > "$image_dir/provenance.json"
       - uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
         uses: docker/login-action@v3
