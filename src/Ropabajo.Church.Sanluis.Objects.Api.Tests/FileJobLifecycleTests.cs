@@ -294,11 +294,43 @@ public sealed class FileJobLifecycleTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Site_administrator_can_generate_and_download_only_own_church_report()
+    {
+        var administrator = _owner with { Roles = new[] { "USER_ADMIN" } };
+        var created = await _service.CreateAsync(administrator, Guid.NewGuid(), "members.excel", 1,
+            JsonSerializer.SerializeToElement(new { }), false, default);
+        Assert.True(created.IsSuccess);
+        var work = await Claim(created.Value.JobId);
+        var upload = (await _service.UploadAsync("church", work.JobId, work.AttemptId, work.LeaseToken,
+            new FileUploadRequest { Name = "workbook", SizeBytes = 1200, Sha256 = new string('b', 64) }, default)).Value;
+        var ready = await _service.CompleteAsync("church", work.JobId, work.AttemptId, work.LeaseToken,
+            new FileCompletion { ArtifactIds = new[] { upload.ArtifactId }, DataAsOf = _clock.GetUtcNow() }, default);
+        Assert.True(ready.IsSuccess);
+        Assert.Equal(created.Value.JobId, Assert.Single((await _service.ListAsync(administrator, null, 10, default)).Value.Items).JobId);
+        Assert.True((await _service.DownloadAsync(administrator, work.JobId, upload.ArtifactId, default)).IsSuccess);
+
+        foreach (var unauthorized in new[]
+        {
+            administrator with { ChurchCode = Guid.NewGuid() },
+            administrator with { OwnerHash = new string('c', 64) },
+            administrator with { Roles = Array.Empty<string>() }
+        })
+        {
+            Assert.Equal("FILE_JOB_NOT_FOUND", (await _service.GetAsync(unauthorized, work.JobId, default)).Errors.Single().Code);
+            Assert.Equal("FILE_JOB_NOT_FOUND", (await _service.DownloadAsync(unauthorized, work.JobId, upload.ArtifactId, default)).Errors.Single().Code);
+        }
+        var denied = await _service.CreateAsync(administrator with { Roles = Array.Empty<string>() },
+            Guid.NewGuid(), "members.excel", 1, JsonSerializer.SerializeToElement(new { }), false, default);
+        Assert.Equal("FILE_JOB_FORBIDDEN", denied.Errors.Single().Code);
+    }
+
+    [Fact]
     public async Task Actual_controller_pipeline_preserves_202_maps_validation_and_scopes_list_and_cancel()
     {
         var builder = WebApplication.CreateBuilder(); builder.WebHost.UseTestServer();
         builder.Services.AddAuthentication(); builder.Services.AddAuthorization(options => options.AddPolicy("ActiveChurchRoute", policy => policy.RequireAssertion(_ => true)));
-        var actor = new Actor(_owner); builder.Services.AddSingleton<IFileJobActor>(actor); builder.Services.AddSingleton(_service);
+        var administrator = _owner with { Roles = new[] { "USER_ADMIN" } };
+        var actor = new Actor(administrator); builder.Services.AddSingleton<IFileJobActor>(actor); builder.Services.AddSingleton(_service);
         var assembly = typeof(FileJobService).Assembly;
         builder.Services.AddAutoMapper(config =>
         {
@@ -320,7 +352,7 @@ public sealed class FileJobLifecycleTests : IAsyncLifetime
         Assert.Contains("REQUEST_ID_REQUIRED", await invalid.Content.ReadAsStringAsync());
         actor.Owner = _owner with { Roles = Array.Empty<string>() };
         Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsJsonAsync(path, new { requestId = Guid.NewGuid(), reportType = "members.excel", parameters = new { } })).StatusCode);
-        actor.Owner = _owner;
+        actor.Owner = administrator;
         var canceled = await client.PostAsJsonAsync(path + $"/{id:D}/cancel", new { }); Assert.Equal(HttpStatusCode.OK, canceled.StatusCode); Assert.Contains("canceled", await canceled.Content.ReadAsStringAsync());
         // El mismo host publica FileJobs y ya no admite el protocolo previo de filas JSON.
         var retired = $"/v1/church/{_owner.ChurchCode:D}/exports";
