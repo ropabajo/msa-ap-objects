@@ -23,7 +23,7 @@ public static class ApiServiceRegistration
         ArgumentNullException.ThrowIfNull(configuration);
         services.AddImportProgress(environment);
         services.AddScoped<FileJobExceptionFilter>();
-        services.AddControllers(options => options.Conventions.Add(new ImportControllerConvention(environment.IsEnvironment("Local"))));
+        services.AddControllers(options => options.Conventions.Add(new ImportControllerConvention((environment.IsEnvironment("Local") || environment.IsProduction()))));
         var runtime = configuration.GetSection("FileJobs").Get<FileJobsRuntimeSettings>() ?? new FileJobsRuntimeSettings();
         services.AddServiceAccountAuthentication("FileJobsWorker", configuration["Keycloak:Authority"] ?? string.Empty,
             runtime.WorkerAudience, runtime.WorkerClients.Keys);

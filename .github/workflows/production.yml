@@ -1,0 +1,65 @@
+name: Production - test and publish candidate
+'on':
+  push:
+    branches:
+    - main
+  workflow_dispatch: null
+permissions:
+  contents: read
+  checks: write
+concurrency:
+  group: production-candidate-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      mysql:
+        image: mysql@sha256:dab0a802b44617303694fb17d166501de279c3031ddeb28c56ecf7fcab5ef0da
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_ROOT_HOST: '%'
+        ports:
+        - 13316:3306
+        options: --health-cmd "mysqladmin ping --silent" --health-interval 5s --health-timeout 10s --health-retries 30
+      rabbitmq:
+        image: rabbitmq@sha256:d7af1c87c5f1eda13fcfca06db452bf3aeab6619fc3358b68535c0c02c4e52bc
+        env:
+          RABBITMQ_DEFAULT_USER: files-test
+          RABBITMQ_DEFAULT_PASS: local-fixture-only
+          RABBITMQ_DEFAULT_VHOST: local-vhost
+        ports:
+        - 13372:5672
+        options: --health-cmd "rabbitmq-diagnostics -q check_running" --health-interval 5s --health-timeout 10s --health-retries
+          20
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.sha }}
+        path: source
+        persist-credentials: false
+    - uses: actions/checkout@v4
+      with:
+        repository: ropabajo/k8s-recipes
+        ref: b48de1633554dd35ee0925e898a8819894db2a8f
+        token: ${{ secrets.TOKEN }}
+        path: .recipes
+        persist-credentials: false
+    - name: Test and publish the immutable production candidate
+      uses: ./.recipes/.github/actions/build-production-candidate
+      with:
+        application: objects
+        kind: api
+        image-repository: ropbajo/msa-ap-objects
+        source-root: ${{ github.workspace }}/source
+        package-user: ${{ secrets.USERNAME }}
+        package-token: ${{ secrets.TOKEN }}
+        docker-user: ${{ secrets.DOCKER_USERNAME }}
+        docker-password: ${{ secrets.DOCKER_PASSWORD }}
+        framework-revision: 3e8a19272f9fc75ee94fe553f976c34adba6ae15
+        contracts-revision: f92012f30689cbde1c31520d271ea195db961a0b
+        schema-revision: 82feb8ee762723946094ab8ee3b0ffbd5b44df47
+        authz-revision: ea3c96e6562fb3b12ae481eafa58e9c08ff482c3
+        churches-contracts-revision: 6d4772b1c037122391a01b0a88a65cf277804fd7

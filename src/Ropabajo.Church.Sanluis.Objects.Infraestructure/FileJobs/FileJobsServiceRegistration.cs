@@ -50,7 +50,7 @@ public static class FileJobsServiceRegistration
                 || runtime.WorkerClients.Count == 0 || runtime.WorkerClients.Any(client => string.IsNullOrWhiteSpace(client.Key) || client.Value != "church"))
                 throw new InvalidOperationException("FileJobs requires an explicit HTTPS worker authority, audience and allowed client map.");
             var sql = new MySqlConnectionStringBuilder(connection);
-            var requiredDatabase = settings.Environment == "development" ? "db_object" : "db_file_jobs_prod";
+            const string requiredDatabase = "db_object";
             if (!string.Equals(sql.Database, requiredDatabase, StringComparison.Ordinal) || string.IsNullOrWhiteSpace(sql.UserID) || string.IsNullOrWhiteSpace(sql.Password))
                 throw new InvalidOperationException("ConnectionStrings:FileJobs must use the configured metadata database and dedicated credentials.");
             if (settings.Environment == "development")
@@ -59,6 +59,14 @@ public static class FileJobsServiceRegistration
                 if (!LocalDatabaseConfiguration.IsDevelopmentEndpoint(sql) || !string.Equals(applicationSql.Database, sql.Database, StringComparison.Ordinal)
                     || !string.Equals(applicationSql.Server, sql.Server, StringComparison.OrdinalIgnoreCase) || applicationSql.Port != sql.Port)
                     throw new InvalidOperationException("FileJobs development requires db_object on the same 3306 endpoint as DefaultConnection, using 161.132.54.155 or its mysql-local alias.");
+            }
+            if (settings.Environment == "production")
+            {
+                var applicationSql = new MySqlConnectionStringBuilder(configuration.GetConnectionString("DefaultConnection") ?? string.Empty);
+                if (!string.Equals(sql.Server, "mysql-objects.ropabajo-church-sanluis.svc.cluster.local", StringComparison.OrdinalIgnoreCase)
+                    || sql.Port != 3306 || !string.Equals(applicationSql.Server, sql.Server, StringComparison.OrdinalIgnoreCase)
+                    || applicationSql.Port != sql.Port || !string.Equals(applicationSql.Database, sql.Database, StringComparison.Ordinal))
+                    throw new InvalidOperationException("FileJobs production requires db_object on the same production Objects endpoint as DefaultConnection.");
             }
             if (string.IsNullOrWhiteSpace(rabbit.HostName) || string.IsNullOrWhiteSpace(rabbit.VirtualHost)
                 || rabbit.Port < 1 || string.IsNullOrWhiteSpace(rabbit.UserName) || string.IsNullOrWhiteSpace(rabbit.Password))

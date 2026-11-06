@@ -34,10 +34,12 @@ public sealed class ImportProgressWebSocketTests
 
     private static string PathFor(Guid church) => $"/v2/churches/{church:D}/imports";
 
-    [Fact]
-    public async Task Ticket_requires_authentication_and_active_church_and_has_no_cache()
+    [Theory]
+    [InlineData("Local")]
+    [InlineData("Production")]
+    public async Task Ticket_requires_authentication_and_active_church_and_has_no_cache(string environmentName)
     {
-        await using var app = await Start();
+        await using var app = await Start(environmentName);
         using var http = app.GetTestClient();
         Assert.Equal(
             HttpStatusCode.Unauthorized,
@@ -253,10 +255,19 @@ public sealed class ImportProgressWebSocketTests
         );
     }
 
-    private static async Task<WebApplication> Start()
+    [Fact]
+    public async Task Staging_does_not_expose_the_import_progress_contract()
+    {
+        await using var app = await Start("Staging");
+        using var http = app.GetTestClient();
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await http.PostAsync(PathFor(Church) + "/progress-ticket", null)).StatusCode);
+    }
+
+    private static async Task<WebApplication> Start(string environmentName = "Local")
     {
         var builder = WebApplication.CreateBuilder(
-            new WebApplicationOptions { EnvironmentName = "Local" }
+            new WebApplicationOptions { EnvironmentName = environmentName }
         );
         builder.WebHost.UseTestServer();
         builder.Logging.ClearProviders();
@@ -287,7 +298,7 @@ public sealed class ImportProgressWebSocketTests
         });
         builder.Services.AddObjectsApi(
             new ConfigurationBuilder().Build(),
-            new ImportFixtureEnvironment()
+            builder.Environment
         );
         builder
             .Services.AddControllers(options => options.Filters.Add<ResultFilter>())

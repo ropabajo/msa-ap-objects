@@ -75,14 +75,27 @@ public sealed class FileJobConfigurationTests
     }
 
     [Fact]
-    public void Production_keeps_its_existing_metadata_database_contract()
+    public void Production_uses_a_separate_account_in_the_existing_objects_database()
     {
         var values = Settings();
         values["FileJobs:Environment"] = "production";
-        values["RabbitMq:VirtualHost"] = "prod-vhost";
-        values["ConnectionStrings:FileJobs"] = "Server=production.example.test;Database=db_file_jobs_prod;User ID=fixture;Password=local-test-only";
+        values["RabbitMq:VirtualHost"] = "dev-vhost";
+        values["ConnectionStrings:DefaultConnection"] = "Server=mysql-objects.ropabajo-church-sanluis.svc.cluster.local;Database=db_object;User ID=objects;Password=local-test-only";
+        values["ConnectionStrings:FileJobs"] = "Server=mysql-objects.ropabajo-church-sanluis.svc.cluster.local;Database=db_object;User ID=jobs;Password=local-test-only";
         var services = new ServiceCollection().AddFileJobs(new ConfigurationBuilder().AddInMemoryCollection(values).Build());
         Assert.Contains(services, descriptor => descriptor.ImplementationType == typeof(SqlFileJobStore));
+    }
+
+    [Theory]
+    [InlineData("mysql-local.church-dev.svc.cluster.local", "db_object")]
+    [InlineData("mysql-objects.ropabajo-church-sanluis.svc.cluster.local", "db_file_jobs_prod")]
+    public void Production_rejects_a_development_endpoint_or_another_database(string server, string database)
+    {
+        var values = Settings();
+        values["FileJobs:Environment"] = "production";
+        values["ConnectionStrings:DefaultConnection"] = "Server=mysql-objects.ropabajo-church-sanluis.svc.cluster.local;Database=db_object;User ID=objects;Password=local-test-only";
+        values["ConnectionStrings:FileJobs"] = $"Server={server};Database={database};User ID=jobs;Password=local-test-only";
+        Assert.Throws<InvalidOperationException>(() => new ServiceCollection().AddFileJobs(new ConfigurationBuilder().AddInMemoryCollection(values).Build()));
     }
 
     [Fact]

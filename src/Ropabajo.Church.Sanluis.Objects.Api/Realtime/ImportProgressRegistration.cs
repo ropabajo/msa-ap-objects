@@ -10,14 +10,14 @@ namespace Ropabajo.Church.Sanluis.Objects.Api.Realtime;
 public static class ImportProgressRegistration
 {
     /// <summary>
-    /// Registra el canal exclusivamente en el contrato Local de importación.
+    /// Registra el canal en los contratos Local y Production de importación.
     /// </summary>
     public static IServiceCollection AddImportProgress(
         this IServiceCollection services,
         IHostEnvironment environment
     )
     {
-        if (!environment.IsEnvironment("Local"))
+        if (!(environment.IsEnvironment("Local") || environment.IsProduction()))
             return services;
         services.AddConnectionTickets();
         services.AddSignalR(options =>
@@ -42,7 +42,7 @@ public static class ImportProgressRegistration
     /// </summary>
     public static WebApplication UseImportProgress(this WebApplication app)
     {
-        if (app.Environment.IsEnvironment("Local"))
+        if ((app.Environment.IsEnvironment("Local") || app.Environment.IsProduction()))
             app.UseWebSockets();
         return app;
     }
@@ -52,7 +52,7 @@ public static class ImportProgressRegistration
     /// </summary>
     public static WebApplication MapImportProgress(this WebApplication app)
     {
-        if (app.Environment.IsEnvironment("Local"))
+        if ((app.Environment.IsEnvironment("Local") || app.Environment.IsProduction()))
             app.MapHub<ImportProgressHub>(
                 "/v2/churches/{churchCode:guid}/imports/progress",
                 options =>

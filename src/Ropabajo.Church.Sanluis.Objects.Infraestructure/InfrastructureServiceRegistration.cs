@@ -32,7 +32,7 @@ public static class InfrastructureServiceRegistration
         ArgumentNullException.ThrowIfNull(configuration);
         LocalDatabaseConfiguration.Validate(configuration, environmentName);
         var serverVersion = string.Equals(environmentName, "Local", StringComparison.OrdinalIgnoreCase)
-            ? new Version(5, 7, 44) : new Version(8, 0, 21);
+            ? new Version(5, 7, 44) : Version.Parse(configuration["Database:ServerVersion"] ?? "8.0.21");
 
         services.AddDbContext<DatabaseContext>(options =>
          options.UseMySql(configuration.GetConnectionString("DefaultConnection"),
@@ -40,7 +40,7 @@ public static class InfrastructureServiceRegistration
 
         services.AddRabbitMq(Assembly.GetExecutingAssembly());
         services.AddFileJobs(configuration);
-        services.AddIntegrationJournal<DatabaseContext>(environmentName.Equals("Local", StringComparison.OrdinalIgnoreCase));
+        services.AddIntegrationJournal<DatabaseContext>((environmentName.Equals("Local", StringComparison.OrdinalIgnoreCase) || environmentName.Equals("Production", StringComparison.OrdinalIgnoreCase)));
         services.AddOutboxContract<BulkImportRegistered>("bulk.load.registered.v1");
         services.AddOutboxContract<ImportRowRetryRequested>("bulk.row.retry-requested.v1");
         services.AddScoped<IImportActor, HttpImportActor>(); services.AddScoped<IImportRepository, ImportRepository>();
