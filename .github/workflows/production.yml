@@ -60,6 +60,6 @@ jobs:
         docker-password: ${{ secrets.DOCKER_PASSWORD }}
         framework-revision: 3e8a19272f9fc75ee94fe553f976c34adba6ae15
         contracts-revision: f92012f30689cbde1c31520d271ea195db961a0b
-        schema-revision: 831ebf37b65ddcaff2a55843d1d5f5193e23cf1a
+        schema-revision: 82feb8ee762723946094ab8ee3b0ffbd5b44df47
         authz-revision: ea3c96e6562fb3b12ae481eafa58e9c08ff482c3
         churches-contracts-revision: 6d4772b1c037122391a01b0a88a65cf277804fd7
