@@ -1,4 +1,7 @@
 using System.Reflection;
+using AutoMapper;
+using Ropabajo.Churc.Sanluis.Framework.Integration;
+using Ropabajo.Church.Sanluis.Objects.Application.Photos;
 using Microsoft.Extensions.Options;
 using Ropabajo.Churc.Sanluis.Framework.Authz.Authorization;
 using Ropabajo.Churc.Sanluis.Framework.Mediator;
@@ -32,12 +35,12 @@ public class ReservedExportPathsTests
     [InlineData("photos/../temporary-exports/v1")]
     public async Task Generic_upload_cannot_overwrite_temporary_documents_or_metadata(string path)
     {
-        var notifications = 0;
-        var bus = Stub<IMediatorBus>((method, _) => { Assert.Equal("RaiseAsync", method.Name); notifications++; return Task.CompletedTask; });
-        var handler = new CreateObjectCommandHandler(bus, new Settings(),
-            Stub<IObjectRepository>(NoCall), Stub<IObjectStateRepository>(NoCall), Stub<ICurrentContextAccessor>(NoCall));
-        await handler.Handle(new CreateObjectCommand { Path = path }, default);
-        Assert.Equal(1, notifications);
+        var handler = new CreateObjectCommandHandler(Stub<IObjectUploadStore>(NoCall),
+            Stub<IObjectRepository>(NoCall), Stub<IObjectStateRepository>(NoCall), Stub<ICurrentContextAccessor>(NoCall),
+            Stub<IIntegrationWork>(NoCall), Stub<IMapper>(NoCall));
+        var result = await handler.Handle(new CreateObjectCommand { Path = path }, default);
+        Assert.True(result.IsFailure); Assert.Equal("OBJECT_PATH_RESERVED", Assert.Single(result.Errors).Code);
+
     }
     private static object? NoCall(MethodInfo method, object?[] args) => throw new InvalidOperationException("Unexpected downstream call: " + method.Name);
     private sealed class Settings : IOptionsSnapshot<MinIoOptions>

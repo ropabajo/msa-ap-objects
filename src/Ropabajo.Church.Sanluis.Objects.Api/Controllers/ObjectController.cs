@@ -1,4 +1,6 @@
-﻿using MediatR;
+using AutoMapper;
+using Ropabajo.Churc.Sanluis.Framework.Core.Results;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Ropabajo.Churc.Sanluis.Framework.Core.Responses;
@@ -20,6 +22,7 @@ namespace Ropabajo.Church.Sanluis.Objects.Api.Controllers;
 public class ObjectController : ApiController
 {
     private readonly IMediatorBus _mediator;
+    private readonly IMapper _mapper;
 
     /// <summary>
     /// Constructor del controlador de objetos
@@ -27,13 +30,15 @@ public class ObjectController : ApiController
     /// <param name="mediator">Instancia de IMediatorBus para enviar comandos y consultas</param>
     /// <param name="headers">Manejador de notificaciones de encabezados</param>
     /// <param name="notifications">Manejador de notificaciones de errores</param>
+    /// <param name="mapper">Mapas de los contratos HTTP a los casos de uso.</param>
     public ObjectController(
         IMediatorBus mediator,
         INotificationHandler<Header> headers,
-        INotificationHandler<Notification> notifications
+        INotificationHandler<Notification> notifications, IMapper mapper
     ) : base(headers, notifications)
     {
-        _mediator = mediator;
+        _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
+        _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
     }
 
     /// <summary>
@@ -80,22 +85,26 @@ public class ObjectController : ApiController
     /// <response code="401">No autorizado</response>
     /// <response code="404">No encontrado</response>
     /// <response code="422">Entidad no procesable</response> 
+    /// <response code="503">El almacenamiento no pudo completar la carga o su verificación.</response>
     /// <response code="500">Error interno del servidor</response>      
     [HttpPost(Name = "CreateObjectAsync")]
     [Consumes(MediaTypeNames.Application.Json)]
     [Produces(MediaTypeNames.Application.Json)]
     [ProducesResponseType(StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult> CreateObjectAsync(
-        [FromBody] CreateObjectCommand request, CancellationToken cancellationToken = default)
+        [FromBody] CreateObjectRequestDto request, CancellationToken cancellationToken = default)
     {
-        await _mediator.SendAsync(request, cancellationToken);
-
-        return Response();
+        var result = await _mediator.SendAsync(_mapper.Map<CreateObjectCommand>(request), cancellationToken);
+        if (result.IsFailure) return result.ToActionResult(httpContext: HttpContext);
+        foreach (var header in result.Value.Headers) HttpContext.Response.Headers.Append(header.Key, header.Value);
+        HttpContext.Response.Headers.Append("Access-Control-Expose-Headers", string.Join(",", result.Value.Headers.Keys));
+        return StatusCode(StatusCodes.Status201Created);
     }
 
     /// <summary>
@@ -104,31 +113,30 @@ public class ObjectController : ApiController
     /// <remarks>
     /// Actualiza el estado un objeto de planilla de prefirmado a subido
     /// </remarks>
-    /// <param name="objectCode" example="4352279a-d37b-4f80-8bd8-42e018d7a98a">Código único de objeto que necesita ser actualizado</param>
+    /// <param name="request">Identificador del archivo enlazado desde la ruta.</param>
     /// <param name="cancellationToken">Token de cancelación</param>
     /// <response code="200">Solicitud exitosa</response>
     /// <response code="400">Solicitud incorrecta</response>
     /// <response code="401">No autorizado</response>
     /// <response code="404">No encontrado</response>
     /// <response code="422">Entidad no procesable</response> 
+    /// <response code="503">El almacenamiento no pudo completar la carga o su verificación.</response>
     /// <response code="500">Error interno del servidor</response>
     [HttpPatch("{objectCode}/state/uploaded", Name = "UploadObjectAsync")]
     [Consumes(MediaTypeNames.Application.Json)]
     [Produces(MediaTypeNames.Application.Json)]
-    [ProducesResponseType(StatusCodes.Status202Accepted)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult> UploadObjectAsync(
-        [FromRoute] string objectCode, CancellationToken cancellationToken = default)
+        [FromRoute] UploadObjectRequestDto request, CancellationToken cancellationToken = default)
     {
-        var command = new UploadObjectCommand(objectCode);
-
-        await _mediator.SendAsync(command, cancellationToken);
-
-        return Response();
+        var result = await _mediator.SendAsync(_mapper.Map<UploadObjectCommand>(request), cancellationToken);
+        return result.IsSuccess ? Ok() : result.ToActionResult(httpContext: HttpContext);
     }
 
     /// <summary>
