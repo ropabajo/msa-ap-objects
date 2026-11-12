@@ -1,67 +1,55 @@
-﻿using MediatR;
+using MediatR;
 using Ropabajo.Churc.Sanluis.Framework.Authz.Authorization;
-using Ropabajo.Churc.Sanluis.Framework.Mediator;
+using Ropabajo.Churc.Sanluis.Framework.Integration;
+using Ropabajo.Churc.Sanluis.Framework.Primitives;
 using Ropabajo.Church.Sanluis.Objects.Application.Contracts.Persistence;
+using Ropabajo.Church.Sanluis.Objects.Application.Photos;
 using Ropabajo.Church.Sanluis.Objects.Domain.Entities;
-
 namespace Ropabajo.Church.Sanluis.Objects.Application.Features.Objects.Commands.UploadObject;
 
-public class UploadObjectCommandHandler : CommandHandler, IRequestHandler<UploadObjectCommand>
+/// <summary>
+
+/// Confirma el estado y su historial sólo después de comprobar las fotos en almacenamiento.
+
+/// </summary>
+public sealed class UploadObjectCommandHandler : IRequestHandler<UploadObjectCommand, Result<UploadObjectResponseDto>>
 {
-    private readonly IMediatorBus _bus;
-    private readonly IObjectRepository _objectRepository;
-    private readonly IObjectStateRepository _objectStateRepository;
-    private readonly ICurrentContextAccessor _currentContextAccessor;
-
+    private readonly IObjectRepository _objects;
+    private readonly IObjectStateRepository _states;
+    private readonly ICurrentContextAccessor _context;
+    private readonly IObjectUploadStore _store;
+    private readonly IIntegrationWork _work;
     /// <summary>
-    /// Initializes a new instance of the <see cref="UploadObjectCommandHandler"/> class.
+    /// Recibe persistencia, actor autenticado, verificador y transacción local.
     /// </summary>
-    /// <param name="bus">Instance of <see cref="IMediatorBus"/> used for publishing notifications.</param>
-    /// <param name="objectRepository">Instance of <see cref="IObjectRepository"/> used for accessing object data.</param>
-    /// <param name="objectStateRepository">Instance of <see cref="IObjectStateRepository"/> used for accessing object state data.</param>
-    /// <param name="currentContextAccessor">Instance of <see cref="ICurrentContextAccessor"/> used for accessing the current context.</param>
-    /// <exception cref="ArgumentNullException"></exception>
-    public UploadObjectCommandHandler(
-        IMediatorBus bus,
-        IObjectRepository objectRepository,
-        IObjectStateRepository objectStateRepository,
-        ICurrentContextAccessor currentContextAccessor
-        ) : base(bus)
+    public UploadObjectCommandHandler(IObjectRepository objects, IObjectStateRepository states, ICurrentContextAccessor context,
+        IObjectUploadStore store, IIntegrationWork work)
     {
-        _bus = bus ?? throw new ArgumentNullException(nameof(bus));
-        _objectRepository = objectRepository ?? throw new ArgumentNullException(nameof(objectRepository));
-        _objectStateRepository = objectStateRepository ?? throw new ArgumentNullException(nameof(objectStateRepository));
-        _currentContextAccessor = currentContextAccessor ?? throw new ArgumentNullException(nameof(currentContextAccessor));
+        _objects = objects ?? throw new ArgumentNullException(nameof(objects));
+        _states = states ?? throw new ArgumentNullException(nameof(states));
+        _context = context ?? throw new ArgumentNullException(nameof(context));
+        _store = store ?? throw new ArgumentNullException(nameof(store));
+        _work = work ?? throw new ArgumentNullException(nameof(work));
     }
-
-    public async Task Handle(UploadObjectCommand command, CancellationToken cancellationToken)
+    /// <inheritdoc />
+    public async Task<Result<UploadObjectResponseDto>> Handle(UploadObjectCommand command, CancellationToken cancellationToken)
     {
-        // Get object
-        var objectToUpdate = await _objectRepository.GetOneAsync(x => x.Code == Guid.Parse(command.ObjectCode) && !x.Delete, cancellationToken);
-        if (objectToUpdate is null)
+        var code = Guid.Parse(command.ObjectCode!);
+        var item = await _objects.GetOneAsync(x => x.Code == code && !x.Delete, cancellationToken);
+        if (item is null) return Result.Failure<UploadObjectResponseDto>(new Error("OBJECT_NOT_FOUND", "No se encontró el archivo. Vuelve a seleccionarlo.", ErrorType.NotFound));
+        if (PhotoUploadPolicy.IsPhotoPath(item.Path) || item.ObjectName.StartsWith("photos/", StringComparison.OrdinalIgnoreCase))
         {
-            await _bus.RaiseAsync(new Notification("404", "No se encontró el objeto.", NotificationType.BadRequest), cancellationToken);
-            return;
+            var verified = await _store.VerifyPhotoAsync(item.ObjectName, cancellationToken);
+            if (verified.IsFailure) return Result.Failure<UploadObjectResponseDto>(verified.Errors.ToArray());
         }
-
-        var state = Shared.Enums.ObjectState.Uploaded;
-        var date = DateTime.UtcNow;
-        var user = _currentContextAccessor.Username;
-
-        objectToUpdate.Date = date;
-        objectToUpdate.StateCode = state;
-        objectToUpdate.User = user;
-
-        await _objectRepository.UpdateAsync(objectToUpdate, cancellationToken);
-
-        var objectStateToCreate = new ObjectState
+        // No hay una transacción abierta durante la lectura/decodificación de MinIO.
+        return await _work.ExecuteAsync(async token =>
         {
-            ObjectId = objectToUpdate.Id,
-            Date = date,
-            StateCode = state,
-            User = user
-        };
-
-        await _objectStateRepository.AddAsync(objectStateToCreate, cancellationToken);
+            var date = DateTime.UtcNow; var user = _context.Username;
+            item.Date = date; item.StateCode = Shared.Enums.ObjectState.Uploaded; item.User = user;
+            await _objects.UpdateAsync(item, token);
+            await _states.AddAsync(new ObjectState { ObjectId = item.Id, Date = date, StateCode = item.StateCode, User = user }, token);
+            return Result<UploadObjectResponseDto>.Success(new UploadObjectResponseDto { Uploaded = true });
+        }, cancellationToken);
     }
 }
