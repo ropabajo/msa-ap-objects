@@ -1,36 +1,51 @@
-﻿using Ropabajo.Churc.Sanluis.Framework.Mediator;
+using MediatR;
+using Ropabajo.Churc.Sanluis.Framework.Primitives;
 
 namespace Ropabajo.Church.Sanluis.Objects.Application.Features.Objects.Commands.CreateObject;
 
-public class CreateObjectCommand : Command
+/// <summary>
+
+/// Solicita una autorización de carga conservando el contrato público existente.
+
+/// </summary>
+public sealed class CreateObjectCommand : IRequest<Result<CreateObjectResponseDto>>
 {
     /// <summary>
-    /// Ruta en MinIO donde se cargan los objetos asociados al formato
+    /// Carpeta del archivo.
     /// </summary>
-    /// <example>ropabajo/church/sanluis/bulk-load/persons/loads</example>
+    /// <example>photos</example>
     public string? Path { get; set; }
 
     /// <summary>
-    /// Extensiones permitidas para el fichero de carga masiva
+
+    /// Formatos solicitados por el consumidor; el servidor conserva su propia lista para fotos.
+
     /// </summary>
-    /// <example>.xls,.xlsx</example>
+    /// <example>.jpg,.jpeg,.png,.webp</example>
     public string? AllowedExtensions { get; set; }
 
     /// <summary>
-    /// Tamaño (en MB) máximo permitido para el fichero de carga masiva
+
+    /// Tamaño solicitado en MB; para fotos el servidor aplica como máximo 5 MB.
+
     /// </summary>
-    /// <example>1</example>
+    /// <example>5</example>
     public int? MaxLength { get; set; }
 
     /// <summary>
-    /// Tiempo (en segundos) de vigencia que tiene la url firmada para la carga de objeto asociado al formato
+
+    /// Vigencia solicitada en segundos; las fotos tienen como máximo cinco minutos.
+
     /// </summary>
-    /// <example>3600</example>
+    /// <example>300</example>
     public int? Expiration { get; set; }
 
     /// <summary>
-    /// Nombre del fichero
+
+    /// Nombre del archivo seleccionado.
+
     /// </summary>
-    /// <example>file_example.xlsx</example>
+    /// <example>postulante.jpeg</example>
     public string? FileName { get; set; }
+
 }
