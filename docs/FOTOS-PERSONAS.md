@@ -1,6 +1,6 @@
 # Validación de fotos antes de confirmar la carga
 
-Desarrollo: cambio en validación. No se modifica producción, secretos ni permisos.
+Desplegado en desarrollo el 12/11/2026. No se modifica producción, secretos ni permisos.
 
 ## Reglas del servidor
 
@@ -51,3 +51,13 @@ el contenido leído al confirmar, no una garantía de inmutabilidad futura del o
 - HTTP del controller real con ResultFilter: cabeceras, cuerpo vacío, identificador
   de ruta y respuesta de validación. La autenticación de ese fixture es local y
   aislada, sin tokens ni usuarios reales; no acredita permisos de un usuario vivo.
+
+## Resultado en desarrollo
+
+El [pipeline 43255893314](https://github.com/ropabajo/msa-ap-objects/actions/runs/43255893314)
+ejecutó correctamente 95 pruebas de Objects, además de las comprobaciones de sus
+dependencias. Desplegó `dev-objects` con digest
+`sha256:b31ded2604bc61769f372f493441471fd5d25c5523c9f2e25b707cb30feccc72`.
+El operador común confirmó rollout, salud HTTPS y disponibilidad de producción.
+La prueba del navegador utiliza HTTP simulado; queda pendiente una carga autenticada
+con un usuario de desarrollo en el ambiente publicado y cualquier pase a producción.
