@@ -2,7 +2,7 @@ name: Objects Local - build, publish and deploy
 
 on:
   push:
-    branches: [development]
+    branches: [development, codex/photo-upload-feedback]
   workflow_call:
     inputs:
       publish_only:
@@ -35,7 +35,7 @@ concurrency:
 jobs:
   publish:
     if: >-
-      (github.ref == 'refs/heads/development' ||
+      (github.ref == 'refs/heads/development' || github.ref == 'refs/heads/codex/photo-upload-feedback' ||
        (inputs.publish_only == true && (github.ref == 'refs/heads/codex/dev-member-export-minio' || github.ref == 'refs/heads/codex/persons-members-import'))) &&
       inputs.image_digest == ''
     runs-on: ubuntu-latest

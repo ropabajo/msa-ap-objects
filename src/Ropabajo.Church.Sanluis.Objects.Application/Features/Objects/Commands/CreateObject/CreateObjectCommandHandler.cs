@@ -1,155 +1,75 @@
-﻿using MediatR;
+using AutoMapper;
+using MediatR;
 using Microsoft.AspNetCore.StaticFiles;
-using Microsoft.Extensions.Options;
-using Minio;
-using Minio.DataModel;
-using Minio.DataModel.Args;
 using Ropabajo.Churc.Sanluis.Framework.Authz.Authorization;
-using Ropabajo.Churc.Sanluis.Framework.Mediator;
-using Ropabajo.Churc.Sanluis.Framework.MinIo;
+using Ropabajo.Churc.Sanluis.Framework.Integration;
+using Ropabajo.Churc.Sanluis.Framework.Primitives;
 using Ropabajo.Church.Sanluis.Objects.Application.Contracts.Persistence;
+using Ropabajo.Church.Sanluis.Objects.Application.Photos;
 using Ropabajo.Church.Sanluis.Objects.Domain.Entities;
 using Object = Ropabajo.Church.Sanluis.Objects.Domain.Entities.Object;
-
 namespace Ropabajo.Church.Sanluis.Objects.Application.Features.Objects.Commands.CreateObject;
 
-public class CreateObjectCommandHandler : CommandHandler, IRequestHandler<CreateObjectCommand>
+/// <summary>
+
+/// Reserva archivos con límites de servidor, conservando rutas, cabeceras y cuerpo HTTP existentes.
+
+/// </summary>
+public sealed class CreateObjectCommandHandler : IRequestHandler<CreateObjectCommand, Result<CreateObjectResponseDto>>
 {
-    private readonly IMediatorBus _bus;
-    private readonly MinIoOptions _minIoOptions;
-    private readonly IObjectRepository _objectRepository;
-    private readonly IObjectStateRepository _objectStateRepository;
-    private readonly ICurrentContextAccessor _currentContextAccessor;
-
-    public CreateObjectCommandHandler(
-        IMediatorBus bus,
-        IOptionsSnapshot<MinIoOptions> minIoOptions,
-        IObjectRepository objectRepository,
-        IObjectStateRepository objectStateRepository,
-        ICurrentContextAccessor currentContextAccessor
-        ) : base(bus)
+    private readonly IObjectUploadStore _store;
+    private readonly IObjectRepository _objects;
+    private readonly IObjectStateRepository _states;
+    private readonly ICurrentContextAccessor _context;
+    private readonly IIntegrationWork _work;
+    private readonly IMapper _mapper;
+    /// <summary>
+    /// Recibe almacenamiento, persistencia, actor autenticado, mapas y transacción local.
+    /// </summary>
+    public CreateObjectCommandHandler(IObjectUploadStore store, IObjectRepository objects, IObjectStateRepository states,
+        ICurrentContextAccessor context, IIntegrationWork work, IMapper mapper)
     {
-        _bus = bus ?? throw new ArgumentNullException(nameof(bus));
-        _minIoOptions = minIoOptions.Value ?? throw new ArgumentNullException(nameof(minIoOptions));
-        _objectRepository = objectRepository ?? throw new ArgumentNullException(nameof(objectRepository));
-        _objectStateRepository = objectStateRepository ?? throw new ArgumentNullException(nameof(objectStateRepository));
-        _currentContextAccessor = currentContextAccessor ?? throw new ArgumentNullException(nameof(currentContextAccessor));
+        _store = store ?? throw new ArgumentNullException(nameof(store));
+        _objects = objects ?? throw new ArgumentNullException(nameof(objects));
+        _states = states ?? throw new ArgumentNullException(nameof(states));
+        _context = context ?? throw new ArgumentNullException(nameof(context));
+        _work = work ?? throw new ArgumentNullException(nameof(work));
+        _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
     }
-
-    public async Task Handle(CreateObjectCommand command, CancellationToken cancellationToken)
+    /// <inheritdoc />
+    public async Task<Result<CreateObjectResponseDto>> Handle(CreateObjectCommand command, CancellationToken cancellationToken)
     {
-        var requestedPath = Uri.UnescapeDataString(command.Path ?? "").TrimStart('/');
-        if (requestedPath.Equals("temporary-exports", StringComparison.OrdinalIgnoreCase)
-            || requestedPath.StartsWith("temporary-exports/", StringComparison.OrdinalIgnoreCase)
-            || requestedPath.Equals("file-jobs", StringComparison.OrdinalIgnoreCase)
-            || requestedPath.StartsWith("file-jobs/", StringComparison.OrdinalIgnoreCase)
-            || requestedPath.Contains("..") || requestedPath.Contains('\\'))
+        var path = Uri.UnescapeDataString(command.Path ?? "").TrimStart('/');
+        if (path.Equals("temporary-exports", StringComparison.OrdinalIgnoreCase) || path.StartsWith("temporary-exports/", StringComparison.OrdinalIgnoreCase)
+            || path.Equals("file-jobs", StringComparison.OrdinalIgnoreCase) || path.StartsWith("file-jobs/", StringComparison.OrdinalIgnoreCase)
+            || path.Contains("..") || path.Contains('\\'))
+            return Result.Failure<CreateObjectResponseDto>(new Error("OBJECT_PATH_RESERVED", "No se permite cargar archivos en esa carpeta.", ErrorType.Forbidden));
+        var photo = PhotoUploadPolicy.IsPhotoPath(path);
+        var extension = Path.GetExtension(command.FileName ?? "").ToLowerInvariant();
+        var extensions = photo ? PhotoUploadPolicy.Extensions : command.AllowedExtensions ?? "";
+        var contentType = photo ? PhotoUploadPolicy.ContentType(command.FileName)
+            : new FileExtensionContentTypeProvider().TryGetContentType("file" + extension, out var detected) ? detected : null;
+        if (!extensions.Split(',').Any(value => value.Trim().Equals(extension, StringComparison.OrdinalIgnoreCase)) || contentType is null)
+            return Result.Failure<CreateObjectResponseDto>(photo ? PhotoUploadErrors.Invalid :
+                new Error("OBJECT_FILE_FORMAT", "El formato del archivo no está permitido. Selecciona un archivo compatible.", ErrorType.Validation));
+        var code = Guid.NewGuid();
+        var key = (photo ? "photos" : path.TrimEnd('/')) + "/" + code.ToString("D") + extension;
+        var maxMb = photo ? 5 : command.MaxLength!.Value;
+        var seconds = photo ? Math.Min(300, command.Expiration!.Value) : command.Expiration!.Value;
+        var grant = await _store.GrantAsync(key, contentType, (long)maxMb * 1024 * 1024, seconds, cancellationToken);
+        if (grant.IsFailure) return Result.Failure<CreateObjectResponseDto>(grant.Errors.ToArray());
+        // MinIO se consulta antes de abrir la transacción que confirma registro e historial.
+        return await _work.ExecuteAsync(async token =>
         {
-            await _bus.RaiseAsync(new Notification("403", "La ruta está reservada para exportaciones temporales.", NotificationType.BadRequest), cancellationToken);
-            return;
-        }
-
-        const string cacheControl = "max-age=86400,s-maxage=86400,proxy-revalidate"; /*"none"*/
-
-        string extension = Path.GetExtension(command.FileName);
-
-        if (!command.AllowedExtensions.Split(",").Any(x => x.Trim() == extension))
-        {
-            await _bus.RaiseAsync(new Notification("422.0001", "La extensión del fichero no es soportado por el formato de carga masiva.", NotificationType.BadRequest), cancellationToken);
-            return;
-
-        }
-
-        var provider = new FileExtensionContentTypeProvider();
-        if (!provider.TryGetContentType(Path.GetExtension(command.FileName), out string contentType))
-        {
-            await _bus.RaiseAsync(new Notification("422.0002", "El tipo de MIME no ha podido ser determinado.", NotificationType.BadRequest), cancellationToken);
-            return;
-        }
-
-        Guid code = Guid.NewGuid();
-        string objectName = $"{command.Path}/{code}{extension}";
-
-        var maxContentRange = command.MaxLength.Value * 1024 * 1024;
-        var expires = DateTime.UtcNow + new TimeSpan(0, 0, command.Expiration.Value);
-
-        var _minioClient = new MinioClient()
-                            .WithEndpoint(_minIoOptions.Endpoint)
-                            .WithCredentials(_minIoOptions.AccessKey, _minIoOptions.SecretKey)
-                            .WithSSL(_minIoOptions.UseSsl)
-                            .Build();
-
-        PostPolicy policy = new();
-        policy.SetContentType(contentType);
-        policy.SetContentRange(1, maxContentRange);
-        policy.SetCacheControl(cacheControl);
-        policy.SetExpires(expires);
-        policy.SetKey(objectName);
-        policy.SetBucket(_minIoOptions.BucketName);
-
-        var currentDate = DateTime.UtcNow;
-        var formattedDate = currentDate.ToString("yyyyMMdd");
-        var formattedDateTime = currentDate.ToString("yyyyMMddTHHmmssZ");
-
-        policy.SetAlgorithm("AWS4-HMAC-SHA256");
-        policy.SetCredential($"{_minIoOptions.AccessKey}/{formattedDate}/us-east-1/s3/aws4_request");
-        policy.SetDate(currentDate);
-
-        PresignedPostPolicyArgs args = new PresignedPostPolicyArgs()
-                                   .WithBucket(_minIoOptions.BucketName)
-                                   .WithObject(objectName)
-                                   .WithPolicy(policy);
-
-        var presignedPost = await _minioClient.PresignedPostPolicyAsync(args);
-
-        var headers = new Dictionary<string, string>
-        {
-            { "url", presignedPost.Item1.AbsoluteUri },
-            { "sanluis-object-code", code.ToString() },
-            { "x-form-data-content-type", contentType },
-            { "x-form-data-cache-control", cacheControl }
-        };
-
-        foreach (var item in presignedPost.Item2)
-        {
-            headers[$"x-form-data-{item.Key}"] = item.Value;
-        }
-
-        foreach (var header in headers)
-        {
-            await _bus.RaiseAsync(new Header(header.Key, header.Value));
-        }
-
-
-        var state = Shared.Enums.ObjectState.PresignedUrl;
-        var date = DateTime.UtcNow;
-        var user = _currentContextAccessor.Username;
-
-        var objectToCreate = new Object
-        {
-            Code = code,
-            ObjectName = objectName,
-            FileName = command.FileName,
-            Path = command.Path,
-            AllowedExtensions = command.AllowedExtensions,
-            MaxLength = command.MaxLength.Value,
-            Expiration = command.Expiration.Value,
-            Date = date,
-            StateCode = state,
-            User = user
-        };
-
-        await _objectRepository.AddAsync(objectToCreate, cancellationToken);
-
-
-        var objectStateToCreate = new ObjectState
-        {
-            ObjectId = objectToCreate.Id,
-            Date = date,
-            StateCode = state,
-            User = user
-        };
-
-        await _objectStateRepository.AddAsync(objectStateToCreate, cancellationToken);
+            var date = DateTime.UtcNow; var user = _context.Username;
+            var item = new Object { Code = code, ObjectName = key, FileName = command.FileName!, Path = photo ? "photos" : path,
+                AllowedExtensions = extensions, MaxLength = maxMb, Expiration = seconds, Date = date,
+                StateCode = Shared.Enums.ObjectState.PresignedUrl, User = user };
+            await _objects.AddAsync(item, token);
+            await _states.AddAsync(new ObjectState { ObjectId = item.Id, Date = date, StateCode = item.StateCode, User = user }, token);
+            var response = _mapper.Map<CreateObjectResponseDto>(grant.Value);
+            response.Headers["sanluis-object-code"] = code.ToString("D");
+            return Result<CreateObjectResponseDto>.Success(response);
+        }, cancellationToken);
     }
 }
